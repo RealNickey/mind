@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import MasonryGrid from "./MasonryGrid";
 import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2 } from "lucide-react";
+import InfiniteCanvas from "./InfiniteCanvas";
 
 interface Item {
   id: string;
@@ -27,6 +28,8 @@ export default function GridLayout({ initialItems }: GridLayoutProps) {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -75,6 +78,39 @@ export default function GridLayout({ initialItems }: GridLayoutProps) {
       }
     };
   }, [hasMore, isLoadingMore, loadMoreItems]);
+
+  const handlePaste = useCallback((text: string) => {
+    const newItem = {
+      id: `pasted-${Date.now()}`,
+      title: text.length > 30 ? text.substring(0, 30) + '...' : text,
+      description: text,
+      type: text.startsWith("http") ? "link" : "article",
+      createdAt: new Date().toISOString(),
+      tags: [{ id: "t-paste", name: "pasted" }],
+    };
+    setItems((prev) => [newItem, ...prev]);
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // Don't intercept if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const text = e.clipboardData?.getData("text/plain");
+      if (text) {
+        handlePaste(text);
+      }
+    };
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => window.removeEventListener("paste", handleGlobalPaste);
+  }, [handlePaste]);
 
   const types = ["all", "article", "movie", "book", "image", "tweet"];
 
@@ -162,8 +198,12 @@ export default function GridLayout({ initialItems }: GridLayoutProps) {
             <Calendar size={18} aria-hidden="true" />
           </button>
           <button 
-            className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Layout settings"  
+            className={`p-2 rounded-full border border-zinc-200 dark:border-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              viewMode === 'canvas' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+            onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
+            aria-label="Toggle Canvas View"
+            title="Toggle Canvas View"
           >
             <LayoutTemplate size={18} aria-hidden="true" />
           </button>
@@ -171,36 +211,43 @@ export default function GridLayout({ initialItems }: GridLayoutProps) {
       </div>
 
       {/* Grid Content */}
-      <div className="flex-1 p-6" role="region" aria-label="Items Grid">
-        <MasonryGrid
-          items={filteredItems}
-          onExpand={handleExpand}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onCanvas={handleCanvas}
-        />
-        
-        {/* Infinite Scroll Sentinel */}
-        {hasMore && filteredItems.length > 0 && searchQuery === "" && activeFilter === "all" && (
-          <div 
-            ref={observerTarget} 
-            className="w-full h-24 mt-4 flex items-center justify-center"
-            aria-live="polite"
-          >
-            {isLoadingMore && (
-              <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" aria-label="Loading more items" />
+      <div className={viewMode === 'canvas' ? "flex-1 overflow-hidden" : "flex-1 p-6"} role="region" aria-label={viewMode === 'canvas' ? "Canvas Area" : "Items Grid"}>
+        {viewMode === 'canvas' ? (
+          <InfiniteCanvas items={filteredItems} />
+        ) : (
+          <>
+            <MasonryGrid
+              items={filteredItems}
+              onExpand={handleExpand}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onCanvas={handleCanvas}
+              onPaste={handlePaste}
+            />
+            
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && filteredItems.length > 0 && searchQuery === "" && activeFilter === "all" && (
+              <div 
+                ref={observerTarget} 
+                className="w-full h-24 mt-4 flex items-center justify-center"
+                aria-live="polite"
+              >
+                {isLoadingMore && (
+                  <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" aria-label="Loading more items" />
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {filteredItems.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
-            <div className="w-16 h-16 mb-4 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-              <Search size={24} className="text-zinc-400" aria-hidden="true" />
-            </div>
-            <p className="font-medium text-lg">No items found</p>
-            <p className="text-sm">Try adjusting your filters or search query.</p>
-          </div>
+            {filteredItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+                <div className="w-16 h-16 mb-4 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                  <Search size={24} className="text-zinc-400" aria-hidden="true" />
+                </div>
+                <p className="font-medium text-lg">No items found</p>
+                <p className="text-sm">Try adjusting your filters or search query.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

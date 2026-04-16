@@ -15,8 +15,8 @@ export default function GraphPage() {
           const items = await res.json();
           const nodes = items.map((item: any) => ({
             id: item.id,
-            label: item.title,
-            group: item.type
+            title: item.title,
+            type: item.type
           }));
           
           const edges: any[] = [];
@@ -24,9 +24,9 @@ export default function GraphPage() {
             if (item.sourceLinks) {
               item.sourceLinks.forEach((link: any) => {
                 edges.push({
-                  from: link.sourceItemId,
-                  to: link.targetItemId,
-                  label: link.description || ''
+                  sourceItemId: link.sourceItemId || link.from || item.id,
+                  targetItemId: link.targetItemId || link.to,
+                  description: link.description || ''
                 });
               });
             }
