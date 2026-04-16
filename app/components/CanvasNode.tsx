@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { Sparkles } from 'lucide-react';
 import ItemCard from '@/app/components/ItemCard';
+import type { ItemCardItem } from '@/app/components/ItemCard';
 
 interface CanvasNodeProps {
   item: any;
   onChangePosition: (x: number, y: number) => void;
   onMouseUp?: () => void;
+  onInspectAI?: (item: ItemCardItem) => void;
 }
 
-export default function CanvasNode({ item, onChangePosition, onMouseUp }: CanvasNodeProps) {
+export default function CanvasNode({ item, onChangePosition, onMouseUp, onInspectAI }: CanvasNodeProps) {
   const [isDragging, setIsDragging] = useState(false);
   const metadata = item.metadata?.customData || {};
   
@@ -56,6 +59,21 @@ export default function CanvasNode({ item, onChangePosition, onMouseUp }: Canvas
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
+      {onInspectAI && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onInspectAI(item as ItemCardItem);
+          }}
+          className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-700 shadow-sm transition-colors hover:bg-zinc-100 hover:text-blue-600 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          title={`Open AI insights for ${item.title}`}
+          aria-label={`Open AI insights for ${item.title}`}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+        </button>
+      )}
       <div className="pointer-events-none">
         <ItemCard item={item} />
       </div>

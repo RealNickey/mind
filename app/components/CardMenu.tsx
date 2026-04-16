@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Copy, Edit2, LayoutTemplate, Trash2, FolderSync } from "lucide-react";
+import { Copy, Edit2, LayoutTemplate, Trash2, FolderSync, Sparkles } from "lucide-react";
 
 interface Item {
   id: string;
@@ -11,11 +11,12 @@ interface Item {
 interface CardMenuProps {
   item: Item;
   onClose: () => void;
+  onInspectAI?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-export default function CardMenu({ item, onClose, onEdit, onDelete }: CardMenuProps) {
+export default function CardMenu({ item, onClose, onInspectAI, onEdit, onDelete }: CardMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,6 +65,15 @@ export default function CardMenu({ item, onClose, onEdit, onDelete }: CardMenuPr
           className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           <LayoutTemplate size={14} /> View in Canvas
+        </button>
+        <button
+          onClick={() => {
+            onInspectAI?.();
+            onClose();
+          }}
+          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <Sparkles size={14} /> AI Insights
         </button>
         <div className="my-1 h-px bg-zinc-200 dark:bg-zinc-800" />
         <button

@@ -7,6 +7,7 @@ import type { ItemCardItem } from "./ItemCard";
 import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot } from "lucide-react";
 import InfiniteCanvas from "./InfiniteCanvas";
 import { AIChat } from "./AIChat";
+import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
 
 type Item = ItemCardItem;
 
@@ -80,6 +81,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [hasMore, setHasMore] = useState(initialItems.length >= pageSize);
   const [error, setError] = useState<string | null>(null);
   const [showAssistant, setShowAssistant] = useState(false);
+  const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
 
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
 
@@ -298,6 +300,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       }
 
       setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setSelectedAIItem((prev) => (prev?.id === item.id ? null : prev));
     } catch (err) {
       console.error(err);
       setError('Failed to delete item.');
@@ -306,6 +309,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
 
   const handleCanvas = (item: Item) => {
     router.push(`/canvas?focus=${item.id}`);
+  };
+
+  const handleInspectAI = (item: Item) => {
+    setSelectedAIItem(item);
   };
 
   return (
@@ -411,7 +418,14 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       {/* Grid Content */}
       <div className={viewMode === 'canvas' ? "flex-1 overflow-hidden" : "flex-1 p-6"} role="region" aria-label={viewMode === 'canvas' ? "Canvas Area" : "Items Grid"}>
         {viewMode === 'canvas' ? (
-          <InfiniteCanvas items={items} />
+          <InfiniteCanvas
+            items={items}
+            onExpand={handleExpand}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onCanvas={handleCanvas}
+            onInspectAI={handleInspectAI}
+          />
         ) : (
           <>
             {error && (
@@ -433,6 +447,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onCanvas={handleCanvas}
+                onInspectAI={handleInspectAI}
                 onPaste={handlePaste}
               />
             )}
@@ -471,6 +486,12 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
           <AIChat />
         </div>
       )}
+
+      <ItemQuickAIPanel
+        item={selectedAIItem}
+        isOpen={Boolean(selectedAIItem)}
+        onClose={() => setSelectedAIItem(null)}
+      />
     </div>
   );
 }

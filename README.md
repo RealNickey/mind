@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Automated Link Health Monitoring
+
+This project includes a scheduled health monitor for saved source URLs.
+
+- Scheduler: `vercel.json` triggers `GET /api/items/link-health` every 30 minutes.
+- Security: set `CRON_SECRET` in your deployment environment.
+	- Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically.
+- Manual run (server-to-server):
+	- `POST /api/items/link-health` for ad-hoc refreshes.
+	- `GET /api/items/link-health` is intended for scheduled runs and validates the cron secret in production.
+
+The monitor stores bounded history in `ItemMetadata.customData`:
+
+- `linkHealth` and `linkHealthHistory` with computed `nextCheckAt` backoff scheduling.
+- `archiveSnapshotLatest` and `archiveSnapshots` with durable outcomes for HTML, non-HTML, HTTP errors, and network errors.

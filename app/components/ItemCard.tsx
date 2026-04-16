@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Copy, Edit2, Expand, LayoutTemplate, MoreHorizontal, Trash2 } from "lucide-react";
+import { Copy, Edit2, Expand, LayoutTemplate, MoreHorizontal, Sparkles, Trash2 } from "lucide-react";
 import CardMenu from "./CardMenu";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
 
@@ -33,9 +33,10 @@ interface ItemCardProps {
   onEdit?: (item: ItemCardItem) => void;
   onDelete?: (item: ItemCardItem) => void;
   onCanvas?: (item: ItemCardItem) => void;
+  onInspectAI?: (item: ItemCardItem) => void;
 }
 
-export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }: ItemCardProps) {
+export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -82,6 +83,14 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }:
             className={`absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity duration-200 ${isHovered || menuOpen ? 'opacity-100' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              onClick={(e) => { e.stopPropagation(); onInspectAI?.(item); }}
+              className="rounded-full bg-white/90 p-1.5 text-zinc-700 shadow-sm hover:bg-zinc-100 hover:text-blue-600 dark:bg-zinc-800/90 dark:text-zinc-300 dark:hover:bg-zinc-700 backdrop-blur-sm"
+              title="AI Insights"
+              aria-label={`Open AI insights for ${item.title}`}
+            >
+              <Sparkles size={14} />
+            </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onCanvas?.(item); }}
               className="rounded-full bg-white/90 p-1.5 text-zinc-700 shadow-sm hover:bg-zinc-100 hover:text-blue-600 dark:bg-zinc-800/90 dark:text-zinc-300 dark:hover:bg-zinc-700 backdrop-blur-sm"
@@ -107,6 +116,7 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }:
                 <CardMenu 
                   item={item} 
                   onClose={() => setMenuOpen(false)}
+                  onInspectAI={() => onInspectAI?.(item)}
                   onEdit={() => onEdit?.(item)}
                   onDelete={() => onDelete?.(item)}
                 />
@@ -129,6 +139,10 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }:
         <ContextMenuItem onClick={() => onCanvas?.(item)}>
           <LayoutTemplate className="mr-2 h-4 w-4" />
           <span>Send to Canvas</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onInspectAI?.(item)}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          <span>AI Insights</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem className="text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50" onClick={() => onDelete?.(item)}>

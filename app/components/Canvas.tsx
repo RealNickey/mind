@@ -2,13 +2,14 @@
 
 import React, { useState, useRef } from 'react';
 import CanvasNode from '@/app/components/CanvasNode';
-import { CanvasItem } from '@/app/lib/types';
+import type { ItemCardItem } from '@/app/components/ItemCard';
 
 interface CanvasProps {
-  initialItems: CanvasItem[];
+  initialItems: ItemCardItem[];
+  onInspectAI?: (item: ItemCardItem) => void;
 }
 
-export default function Canvas({ initialItems }: CanvasProps) {
+export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
   const [items, setItems] = useState(initialItems);
   const [isPanning, setIsPanning] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -66,6 +67,7 @@ export default function Canvas({ initialItems }: CanvasProps) {
             item={item} 
             onChangePosition={(x, y) => updateNodePosition(item.id, x, y)} 
             onMouseUp={handleSave}
+            onInspectAI={onInspectAI}
           />
         ))}
       </div>

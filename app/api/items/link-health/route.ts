@@ -1,31 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/app/lib/db';
-import { checkLinkHealth, type LinkHealthStatus } from '@/app/lib/link-health';
-import { normalizeSourceUrl } from '@/app/lib/url-utils';
-import type { Database } from '@/app/lib/database.types';
+import { refreshLinkHealthForItems } from '@/app/lib/link-health-monitor';
 
-type ItemMetadataInsert = Database['public']['Tables']['ItemMetadata']['Insert'];
+export const runtime = 'nodejs';
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
-
-type JsonObject = Record<string, unknown>;
-
-function asObject(value: unknown): JsonObject | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as JsonObject;
-}
-
-function asObjectArray(value: unknown): JsonObject[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((entry): entry is JsonObject => Boolean(asObject(entry)));
-}
+const DEFAULT_CONCURRENCY = 4;
+const MAX_CONCURRENCY = 8;
+const DEFAULT_SNAPSHOT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
 function parsePositiveInt(value: unknown, fallback: number): number {
   const parsed = Number(value);
@@ -36,9 +18,59 @@ function parsePositiveInt(value: unknown, fallback: number): number {
   return Math.floor(parsed);
 }
 
-function asLinkStatus(value: unknown): LinkHealthStatus | null {
-  if (value === 'alive' || value === 'broken' || value === 'unknown') {
+function parseBoolean(value: unknown, fallback: boolean): boolean {
+  if (typeof value === 'boolean') {
     return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+      return true;
+    }
+
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+      return false;
+    }
+  }
+
+  return fallback;
+}
+
+function extractTokenFromAuthHeader(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const [scheme, token] = value.split(' ', 2);
+  if (!scheme || !token || scheme.toLowerCase() !== 'bearer') {
+    return null;
+  }
+
+  return token.trim() || null;
+}
+
+function authorizeCronRequest(req: NextRequest): NextResponse | null {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Missing CRON_SECRET for scheduled link-health job' },
+        { status: 503 }
+      );
+    }
+
+    return null;
+  }
+
+  const tokenFromAuth = extractTokenFromAuthHeader(req.headers.get('authorization'));
+  const tokenFromHeader = req.headers.get('x-cron-secret');
+  const tokenFromQuery = req.nextUrl.searchParams.get('token');
+  const providedToken = tokenFromAuth ?? tokenFromHeader ?? tokenFromQuery;
+
+  if (!providedToken || providedToken !== cronSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   return null;
@@ -48,98 +80,54 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const itemId = typeof body?.itemId === 'string' && body.itemId.trim() ? body.itemId.trim() : null;
-    const requestedLimit = parsePositiveInt(body?.limit, DEFAULT_LIMIT);
-    const limit = Math.min(requestedLimit, MAX_LIMIT);
 
-    let query = db.from('Item').select('id, sourceUrl').order('updatedAt', { ascending: false }).limit(limit);
-    if (itemId) {
-      query = db.from('Item').select('id, sourceUrl').eq('id', itemId).limit(1);
-    }
-
-    const { data: items, error: itemError } = await query;
-    if (itemError) {
-      throw itemError;
-    }
-
-    const candidates = (items ?? []).filter((item) => Boolean(item.sourceUrl));
-    if (candidates.length === 0) {
-      return NextResponse.json({ checked: 0, results: [] });
-    }
-
-    const candidateIds = candidates.map((item) => item.id);
-    const { data: metadataRows, error: metadataError } = await db
-      .from('ItemMetadata')
-      .select('itemId, sourceUrl, customData')
-      .in('itemId', candidateIds);
-
-    if (metadataError) {
-      throw metadataError;
-    }
-
-    const metadataByItemId = new Map((metadataRows ?? []).map((row) => [row.itemId, row]));
-    const results: Array<{
-      itemId: string;
-      sourceUrl: string;
-      status: LinkHealthStatus;
-      statusCode: number | null;
-      checkedAt: string;
-      changed: boolean;
-      error: string | null;
-    }> = [];
-
-    for (const item of candidates) {
-      const metadata = metadataByItemId.get(item.id);
-      const sourceUrl = normalizeSourceUrl(metadata?.sourceUrl ?? item.sourceUrl) ?? null;
-      if (!sourceUrl) {
-        continue;
-      }
-
-      const health = await checkLinkHealth(sourceUrl);
-      const customData = asObject(metadata?.customData) ?? {};
-      const currentHealth = asObject(customData.linkHealth);
-      const previousStatus = asLinkStatus(currentHealth?.status);
-
-      const history = asObjectArray(customData.linkHealthHistory);
-      const nextHistory = [health as unknown as JsonObject, ...history].slice(0, 20);
-
-      const nextCustomData = {
-        ...customData,
-        normalizedSourceUrl: sourceUrl,
-        linkHealth: health,
-        linkHealthHistory: nextHistory,
-      };
-
-      const metadataPayload: ItemMetadataInsert = {
-        itemId: item.id,
-        sourceUrl,
-        customData: nextCustomData as unknown as ItemMetadataInsert['customData'],
-      };
-
-      const { error: upsertError } = await db
-        .from('ItemMetadata')
-        .upsert(metadataPayload, { onConflict: 'itemId' });
-
-      if (upsertError) {
-        throw upsertError;
-      }
-
-      results.push({
-        itemId: item.id,
-        sourceUrl,
-        status: health.status,
-        statusCode: health.statusCode,
-        checkedAt: health.checkedAt,
-        changed: previousStatus !== null && previousStatus !== health.status,
-        error: health.error,
-      });
-    }
-
-    return NextResponse.json({
-      checked: results.length,
-      results,
+    const result = await refreshLinkHealthForItems({
+      itemId,
+      limit: Math.min(parsePositiveInt(body?.limit, DEFAULT_LIMIT), MAX_LIMIT),
+      scanLimit: parsePositiveInt(body?.scanLimit, DEFAULT_LIMIT * 8),
+      concurrency: Math.min(parsePositiveInt(body?.concurrency, DEFAULT_CONCURRENCY), MAX_CONCURRENCY),
+      force: itemId ? true : parseBoolean(body?.force, true),
+      captureSnapshots: parseBoolean(body?.captureSnapshots, false),
+      snapshotMaxAgeMs: parsePositiveInt(body?.snapshotMaxAgeMs, DEFAULT_SNAPSHOT_MAX_AGE_MS),
     });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Link health refresh failed:', error);
     return NextResponse.json({ error: 'Failed to refresh link health' }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const unauthorized = authorizeCronRequest(req);
+  if (unauthorized) {
+    return unauthorized;
+  }
+
+  try {
+    const searchParams = req.nextUrl.searchParams;
+
+    const result = await refreshLinkHealthForItems({
+      limit: Math.min(parsePositiveInt(searchParams.get('limit'), DEFAULT_LIMIT), MAX_LIMIT),
+      scanLimit: parsePositiveInt(searchParams.get('scanLimit'), DEFAULT_LIMIT * 8),
+      concurrency: Math.min(
+        parsePositiveInt(searchParams.get('concurrency'), DEFAULT_CONCURRENCY),
+        MAX_CONCURRENCY
+      ),
+      force: parseBoolean(searchParams.get('force'), false),
+      captureSnapshots: parseBoolean(searchParams.get('captureSnapshots'), true),
+      snapshotMaxAgeMs: parsePositiveInt(
+        searchParams.get('snapshotMaxAgeMs'),
+        DEFAULT_SNAPSHOT_MAX_AGE_MS
+      ),
+    });
+
+    return NextResponse.json({
+      job: 'link-health-monitor',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Scheduled link health run failed:', error);
+    return NextResponse.json({ error: 'Failed to execute scheduled link health run' }, { status: 500 });
   }
 }

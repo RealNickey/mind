@@ -3,13 +3,22 @@
 import React, { useRef, useMemo, useEffect } from "react";
 import { useSpring, animated, to } from "@react-spring/web";
 import { useGesture } from "@use-gesture/react";
-import ItemCard from "@/app/components/ItemCard";
+import ItemCard, { type ItemCardItem } from "@/app/components/ItemCard";
 
 const CARD_WIDTH = 320;
 const ROW_HEIGHT = 420;
 const GAP = 32;
 
-export default function InfiniteCanvas({ items }: { items: any[] }) {
+interface InfiniteCanvasProps {
+  items: ItemCardItem[];
+  onExpand?: (item: ItemCardItem) => void;
+  onEdit?: (item: ItemCardItem) => void;
+  onDelete?: (item: ItemCardItem) => void;
+  onCanvas?: (item: ItemCardItem) => void;
+  onInspectAI?: (item: ItemCardItem) => void;
+}
+
+export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: InfiniteCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Layout items in a grid
@@ -111,7 +120,14 @@ export default function InfiniteCanvas({ items }: { items: any[] }) {
                     }}
                     onPointerDown={(e) => e.stopPropagation()} // Prevent pan on item drag if needed
                   >
-                    <ItemCard item={item} />
+                    <ItemCard
+                      item={item}
+                      onExpand={onExpand}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onCanvas={onCanvas}
+                      onInspectAI={onInspectAI}
+                    />
                   </div>
                 ))}
               </div>

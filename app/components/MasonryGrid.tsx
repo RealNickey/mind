@@ -11,10 +11,11 @@ interface MasonryGridProps {
   onEdit?: (item: Item) => void;
   onDelete?: (item: Item) => void;
   onCanvas?: (item: Item) => void;
+  onInspectAI?: (item: Item) => void;
   onPaste?: (text: string) => void;
 }
 
-export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onPaste }: MasonryGridProps) {
+export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste }: MasonryGridProps) {
   const breakpointColumnsObj = {
     default: 5,
     1536: 4,
@@ -77,6 +78,7 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
             onEdit={onEdit}
             onDelete={onDelete}
             onCanvas={onCanvas}
+            onInspectAI={onInspectAI}
           />
         </div>
       ))}
