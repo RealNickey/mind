@@ -49,7 +49,7 @@ export interface EmbeddingRequest {
 
 export interface EmbeddingResponse {
   embedding: number[];
-  source: 'local' | 'groq';
+  source: 'local' | 'groq' | 'cohere';
   dimensions: number;
 }
 

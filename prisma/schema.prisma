@@ -57,7 +57,7 @@ model ItemMetadata {
 model Embedding {
   id           String                     @id @default(cuid())
   itemId       String
-  vector       Unsupported("vector(384)") // 384 dims for all-MiniLM-L6-v2
+  vector       Unsupported("vector(1024)") // 1024 dims for Cohere embed-english-v3.0
   modelVersion String
   
   item         Item                       @relation(fields: [itemId], references: [id], onDelete: Cascade)

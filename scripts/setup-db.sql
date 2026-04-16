@@ -123,9 +123,9 @@ CREATE TABLE IF NOT EXISTS public."ItemMetadata" (
 CREATE TABLE IF NOT EXISTS public."Embedding" (
   id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "itemId" text NOT NULL UNIQUE REFERENCES public."Item"(id) ON DELETE CASCADE,
-  vector extensions.vector(384) NOT NULL,
-  embedding extensions.vector(384) NOT NULL,
-  "modelVersion" text NOT NULL DEFAULT 'all-MiniLM-L6-v2',
+  vector extensions.vector(1024) NOT NULL,
+  embedding extensions.vector(1024) NOT NULL,
+  "modelVersion" text NOT NULL DEFAULT 'embed-english-v3.0',
   "createdAt" timestamptz NOT NULL DEFAULT NOW()
 );
 
@@ -220,7 +220,7 @@ BEFORE INSERT OR UPDATE ON public."Embedding"
 FOR EACH ROW EXECUTE FUNCTION public.sync_embedding_columns();
 
 CREATE OR REPLACE FUNCTION public.match_items(
-  query_embedding extensions.vector(384),
+  query_embedding extensions.vector(1024),
   match_threshold float DEFAULT 0,
   match_count int DEFAULT 10
 )

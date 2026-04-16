@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
-import { generateLocalEmbedding } from '@/app/lib/embeddings';
-import { generateGroqEmbedding } from '@/app/lib/groq';
+import { embed } from 'ai';
+import { cohere } from '@ai-sdk/cohere';
 import { hydrateItems } from '@/app/lib/item-hydration';
 
 export async function POST(req: Request) {
@@ -14,23 +14,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Valid query is required' }, { status: 400 });
     }
 
-    let embedding: number[];
-    let source = 'local';
+    const source = 'cohere';
 
-    try {
-      // Prioritize local embedding model
-      embedding = await generateLocalEmbedding(query);
-    } catch (localError: any) {
-      console.warn('Local embedding failed during semantic search, falling back to Groq:', localError.message);
-      
-      try {
-        embedding = await generateGroqEmbedding(query);
-        source = 'groq';
-      } catch (groqError: any) {
-        console.error('Groq semantic search fallback failed:', groqError.message);
-        throw new Error('All embedding providers failed');
-      }
-    }
+    // Generate embedding using Cohere English v3.0 model
+    const { embedding } = await embed({
+      model: cohere.embedding('embed-english-v3.0'),
+      value: query,
+    });
 
     // Convert vector array to string representation for pgvector parameter casting
     const vectorString = `[${embedding.join(',')}]`;

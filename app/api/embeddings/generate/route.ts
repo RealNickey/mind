@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { generateLocalEmbedding } from '@/app/lib/embeddings';
-import { generateGroqEmbedding } from '@/app/lib/groq';
+import { embed } from 'ai';
+import { cohere } from '@ai-sdk/cohere';
 import { EmbeddingRequest, EmbeddingResponse, APIErrorResponse } from '@/app/lib/types';
 
 export async function POST(req: Request) {
@@ -12,26 +12,13 @@ export async function POST(req: Request) {
       return NextResponse.json<APIErrorResponse>({ error: 'Valid text is required' }, { status: 400 });
     }
 
-    let embedding: number[];
-    let source: 'local' | 'groq' = 'local';
+    // Generate embedding using Cohere English v3.0 model (1024 dims)
+    const { embedding } = await embed({
+      model: cohere.embedding('embed-english-v3.0'),
+      value: text,
+    });
 
-    try {
-      // Try local transformers.js first (all-MiniLM-L6-v2, 384 dims)
-      embedding = await generateLocalEmbedding(text);
-    } catch (localError: unknown) {
-      console.warn('Local embedding failed, falling back to Groq API:', localError instanceof Error ? localError.message : String(localError));
-      
-      // Fallback to Groq API (Matryoshka truncation to 384 dims)
-      try {
-        embedding = await generateGroqEmbedding(text);
-        source = 'groq';
-      } catch (groqError: unknown) {
-        console.error('Groq embedding fallback also failed:', groqError instanceof Error ? groqError.message : String(groqError));
-        throw new Error('All embedding providers failed');
-      }
-    }
-
-    return NextResponse.json<EmbeddingResponse>({ embedding, source, dimensions: embedding.length });
+    return NextResponse.json<EmbeddingResponse>({ embedding, source: 'cohere', dimensions: embedding.length });
   } catch (error: unknown) {
     console.error('Embedding generation API error:', error instanceof Error ? error.message : String(error));
     return NextResponse.json<APIErrorResponse>({ error: error instanceof Error ? error.message : 'Failed to generate embeddings' }, { status: 500 });
