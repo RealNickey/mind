@@ -1,0 +1,84 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL") // For Supabase connection pooling
+  extensions = [vector]
+}
+
+model Item {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  content     String?
+  type        String         // e.g., article, movie, book, image, recipe, note, link, product
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  userId      String?        // No auth requested, keeping optional
+  
+  metadata    ItemMetadata?
+  embeddings  Embedding[]
+  
+  tags        Tag[]
+  collections Collection[]
+
+  sourceLinks ItemLink[] @relation("SourceLinks")
+  targetLinks ItemLink[] @relation("TargetLinks")
+}
+
+model ItemLink {
+  id           String   @id @default(cuid())
+  sourceItemId String
+  targetItemId String
+  description  String?
+  createdAt    DateTime @default(now())
+
+  sourceItem   Item     @relation("SourceLinks", fields: [sourceItemId], references: [id], onDelete: Cascade)
+  targetItem   Item     @relation("TargetLinks", fields: [targetItemId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceItemId, targetItemId])
+}
+
+model ItemMetadata {
+  id         String   @id @default(cuid())
+  itemId     String   @unique
+  sourceUrl  String?
+  imageUrl   String?
+  preview    String?
+  customData Json?
+  
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model Embedding {
+  id           String                     @id @default(cuid())
+  itemId       String
+  vector       Unsupported("vector(384)") // 384 dims for all-MiniLM-L6-v2
+  modelVersion String
+  
+  item         Item                       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  userId String?
+  color  String?
+  count  Int     @default(0)
+  
+  items  Item[]
+}
+
+model Collection {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  userId      String?
+  isAuto      Boolean @default(false)
+  
+  items       Item[]
+}
