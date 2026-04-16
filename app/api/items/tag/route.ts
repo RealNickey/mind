@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { generateTagsForContent } from '@/app/lib/ai-tagging';
+import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 
 export async function POST(req: Request) {
   try {
@@ -11,14 +12,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
     }
 
-    // Fetch the item
-    const { data: item, error: fetchErr } = await db
-      .from('Item')
-      .select('*, tags:Tag(*)')
-      .eq('id', itemId)
-      .single();
+    const item = await getItemByIdWithRelations(itemId);
 
-    if (fetchErr || !item) {
+    if (!item) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
@@ -34,23 +30,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'No tags generated', tags: item.tags });
     }
 
-    // Extract names of existing tags to avoid reconnecting them unnecessarily
-    const existingTagNames = new Set((item.tags || []).map((t: any) => t.name));
-    const newTagsToConnect = generatedTags.filter(t => !existingTagNames.has(t));
+    const existingTagNames = new Set((item.tags || []).map((tag) => tag.name.toLowerCase()));
+    const newTagsToConnect = generatedTags
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean)
+      .filter((tag) => !existingTagNames.has(tag));
 
     if (newTagsToConnect.length === 0) {
       return NextResponse.json({ success: true, tags: item.tags, message: 'Tags already up to date' });
     }
 
-    // Upsert tags to ensure they exist and their global count is tracked/incremented
     const connectedTags = [];
+
     for (const tagName of newTagsToConnect) {
-      let { data: tag, error: selectErr } = await db
+      const { data: existingTag, error: selectErr } = await db
         .from('Tag')
         .select('*')
         .eq('name', tagName)
-        .single();
-        
+        .maybeSingle();
+
+      if (selectErr) throw selectErr;
+
+      let tag = existingTag;
       if (!tag) {
         const { data: newTag, error: insertErr } = await db
           .from('Tag')
@@ -69,23 +70,17 @@ export async function POST(req: Request) {
         if (updateErr) throw updateErr;
         tag = updatedTag;
       }
-      
+
       connectedTags.push(tag);
-      
-      // Connect in relation table _ItemToTag (Assuming Prisma default implicit M2M)
-      const A = [itemId, tag.id].sort()[0];
-      const B = [itemId, tag.id].sort()[1] === itemId ? itemId : tag.id;
-      // Wait, A is typically Item and B is Tag, or ordered by table name.
-      // Item (I) vs Tag (T) -> 'Item' comes before 'Tag' alphabetically. 
-      // Prisma uses A mapping to the model that comes first alphabetically (Item), B to the other (Tag).
-      await db.from('_ItemToTag').insert({ A: itemId, B: tag.id }); // Ignore errors if it already exists
+
+      const { error: connectError } = await db
+        .from('_ItemToTag')
+        .upsert({ A: itemId, B: tag.id }, { onConflict: 'A,B' });
+
+      if (connectError) throw connectError;
     }
 
-    const { data: finalItem } = await db
-      .from('Item')
-      .select('*, tags:Tag(*)')
-      .eq('id', itemId)
-      .single();
+    const finalItem = await getItemByIdWithRelations(itemId);
 
     return NextResponse.json({ 
       success: true, 

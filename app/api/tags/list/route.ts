@@ -3,7 +3,7 @@ import { db } from '@/app/lib/db';
 
 export async function GET() {
   try {
-    const { data: tags, error } = await db.from('tag').select('*').order('count', { ascending: false });
+    const { data: tags, error } = await db.from('Tag').select('*').order('count', { ascending: false });
 
     if (error) throw error;
 

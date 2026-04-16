@@ -3,7 +3,7 @@ import { db } from '@/app/lib/db';
 
 export async function POST(req: Request) {
   try {
-    const { name, description, isAuto } = await req.json();
+    const { name, description, isAuto, userId } = await req.json();
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -15,6 +15,7 @@ export async function POST(req: Request) {
         name,
         description,
         isAuto: isAuto || false,
+        ...(userId && { userId }),
       })
       .select()
       .single();

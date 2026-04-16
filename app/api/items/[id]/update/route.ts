@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
+import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 
 export async function PUT(
   req: Request,
@@ -19,12 +20,17 @@ export async function PUT(
         ...(type && { type }),
       })
       .eq('id', resolvedParams.id)
-      .select('*, tags:Tag(*), collections:Collection(*), metadata:ItemMetadata(*)')
+      .select('id')
       .single();
 
     if (error) throw error;
 
-    return NextResponse.json(item);
+    const hydratedItem = await getItemByIdWithRelations(item.id);
+    if (!hydratedItem) {
+      return NextResponse.json({ error: 'Item not found after update' }, { status: 404 });
+    }
+
+    return NextResponse.json(hydratedItem);
   } catch (error: any) {
     console.error('Update item error:', error);
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });

@@ -4,7 +4,7 @@ import { db } from '@/app/lib/db';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, description, content, type, sourceUrl } = body;
+    const { title, description, content, type, sourceUrl, userId } = body;
 
     if (!title || !type) {
       return NextResponse.json({ error: 'Title and type are required' }, { status: 400 });
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
         description,
         content,
         type,
+        ...(sourceUrl && { sourceUrl }),
+        ...(userId && { userId }),
       })
       .select()
       .single();

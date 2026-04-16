@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { ItemResponse, APIErrorResponse, DeleteItemResponse } from '@/app/lib/types';
+import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 
 export async function GET(
   req: Request,
@@ -8,31 +9,16 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const { data, error } = await db
-      .from('Item')
-      .select(`
-        *,
-        tags:Tag(*),
-        collections:Collection(*),
-        metadata:ItemMetadata(*),
-        sourceLinks:ItemLink!sourceItemId(
-          *,
-          targetItem:Item!targetItemId(*)
-        ),
-        targetLinks:ItemLink!targetItemId(
-          *,
-          sourceItem:Item!sourceItemId(*)
-        )
-      `)
-      .eq('id', resolvedParams.id)
-      .single();
+    const data = await getItemByIdWithRelations(resolvedParams.id);
 
-    if (error || !data) {
-      console.error('Fetch error:', error);
+    if (!data) {
       return NextResponse.json<APIErrorResponse>({ error: 'Item not found' }, { status: 404 });
     }
 
-    const item: ItemResponse = data;
+    const item: ItemResponse = {
+      ...data,
+      metadata: data.metadata ?? undefined,
+    };
     return NextResponse.json<ItemResponse>(item);
   } catch (error: unknown) {
     console.error('Get item error:', error);

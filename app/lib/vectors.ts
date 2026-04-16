@@ -28,6 +28,7 @@ export async function storeEmbedding(itemId: string, vector: number[]) {
     id: crypto.randomUUID(),
     itemId,
     vector: vectorStr,
+    embedding: vectorStr,
     modelVersion: 'Xenova/all-MiniLM-L6-v2'
   });
   if (error) throw error;

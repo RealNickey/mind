@@ -1,13 +1,10 @@
 import { db } from '@/app/lib/db';
-import { generateLocalEmbedding } from '@/app/lib/embeddings';
+import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 
 export async function autoCategorizeItem(itemId: string) {
-  const { data: item } = await db.from('Item').select('*, metadata:ItemMetadata(*), tags:Tag(*)').eq('id', itemId).single();
+  const item = await getItemByIdWithRelations(itemId);
 
   if (!item) return;
-
-  const contentToEmbed = `${item.title} ${item.description || ''} ${item.content || ''}`;
-  const embedding = await generateLocalEmbedding(contentToEmbed);
 
   const getOrCreateCollection = async (name: string, description?: string) => {
     let { data: collection } = await db.from('Collection').select('*').eq('name', name).eq('isAuto', true).maybeSingle();
@@ -19,10 +16,11 @@ export async function autoCategorizeItem(itemId: string) {
   };
 
   const connectToCollection = async (collectionId: string) => {
-    const A = [collectionId, itemId].sort()[0];
-    const B = [collectionId, itemId].sort()[1] === collectionId ? collectionId : itemId;
-    // Prisma implicit tables format: _CollectionToItem
-    await db.from('_CollectionToItem').insert({ A: collectionId, B: itemId });
+    const { error } = await db
+      .from('_CollectionToItem')
+      .upsert({ A: collectionId, B: itemId }, { onConflict: 'A,B' });
+
+    if (error) throw error;
   };
 
   // Example logic: cluster or compare items, but for now we'll rely on type/tags
