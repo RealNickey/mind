@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import MasonryGrid from "./MasonryGrid";
 import type { ItemCardItem } from "./ItemCard";
-import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2 } from "lucide-react";
+import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot } from "lucide-react";
 import InfiniteCanvas from "./InfiniteCanvas";
+import { AIChat } from "./AIChat";
 
 type Item = ItemCardItem;
 
@@ -72,11 +73,13 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [items, setItems] = useState<Item[]>(initialItems);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"keyword" | "semantic">("keyword");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialItems.length >= pageSize);
   const [error, setError] = useState<string | null>(null);
+  const [showAssistant, setShowAssistant] = useState(false);
 
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
 
@@ -107,6 +110,31 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     setError(null);
 
     try {
+      if (searchMode === "semantic" && debouncedSearch) {
+        const semanticResponse = await fetch("/api/search/semantic", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: debouncedSearch,
+            limit: pageSize,
+          }),
+          cache: "no-store",
+        });
+
+        if (!semanticResponse.ok) {
+          throw new Error("Failed to load semantic results");
+        }
+
+        const payload = await semanticResponse.json() as { results?: Item[] };
+        const semanticItems = Array.isArray(payload.results) ? payload.results : [];
+
+        setItems(dedupeById(semanticItems));
+        setHasMore(false);
+        return;
+      }
+
       const res = await fetch(buildListUrl(0), { cache: "no-store" });
       if (!res.ok) {
         throw new Error("Failed to load items");
@@ -121,10 +149,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     } finally {
       setIsRefreshing(false);
     }
-  }, [buildListUrl, pageSize]);
+  }, [buildListUrl, debouncedSearch, pageSize, searchMode]);
 
   const loadMoreItems = useCallback(async () => {
-    if (isLoadingMore || isRefreshing || !hasMore) {
+    if (searchMode === "semantic" || isLoadingMore || isRefreshing || !hasMore) {
       return;
     }
 
@@ -146,7 +174,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     } finally {
       setIsLoadingMore(false);
     }
-  }, [buildListUrl, hasMore, isLoadingMore, isRefreshing, items.length, pageSize]);
+  }, [buildListUrl, hasMore, isLoadingMore, isRefreshing, items.length, pageSize, searchMode]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -161,7 +189,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   }, [loadInitialItems]);
 
   useEffect(() => {
-    if (viewMode !== "grid") {
+    if (viewMode !== "grid" || searchMode === "semantic") {
       return;
     }
 
@@ -185,7 +213,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       }
       observer.disconnect();
     };
-  }, [hasMore, isLoadingMore, loadMoreItems, viewMode]);
+  }, [hasMore, isLoadingMore, loadMoreItems, searchMode, viewMode]);
 
   const handlePaste = useCallback((text: string) => {
     const persistPastedContent = async () => {
@@ -312,7 +340,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
             <input
               type="text"
-              placeholder="Search in grid..."
+              placeholder={searchMode === "semantic" ? "Semantic search in your mind..." : "Search in grid..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-full border border-zinc-200 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -322,6 +350,33 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={14} />
             )}
           </div>
+          <button
+            className={`px-3 py-2 rounded-full border text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              searchMode === "semantic"
+                ? "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-500/50 dark:bg-blue-900/30 dark:text-blue-200"
+                : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            }`}
+            onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
+            aria-label="Toggle semantic search"
+            title="Toggle semantic search"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles size={14} aria-hidden="true" />
+              {searchMode === "semantic" ? "Semantic" : "Keyword"}
+            </span>
+          </button>
+          <button
+            className={`p-2 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              showAssistant
+                ? "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600/60 dark:bg-emerald-900/30 dark:text-emerald-300"
+                : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+            onClick={() => setShowAssistant((prev) => !prev)}
+            aria-label="Toggle AI assistant"
+            title="Toggle AI assistant"
+          >
+            <Bot size={18} aria-hidden="true" />
+          </button>
           <button 
             className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-label="Filter items"
@@ -382,7 +437,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               />
             )}
 
-            {hasMore && items.length > 0 && (
+            {searchMode !== 'semantic' && hasMore && items.length > 0 && (
               <div 
                 ref={observerTarget} 
                 className="w-full h-24 mt-4 flex items-center justify-center"
@@ -400,12 +455,22 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                   <Search size={24} className="text-zinc-400" aria-hidden="true" />
                 </div>
                 <p className="font-medium text-lg">No items found</p>
-                <p className="text-sm">Try adjusting your filters or search query.</p>
+                <p className="text-sm">
+                  {searchMode === 'semantic'
+                    ? 'Try a broader semantic query or switch back to keyword search.'
+                    : 'Try adjusting your filters or search query.'}
+                </p>
               </div>
             )}
           </>
         )}
       </div>
+
+      {showAssistant && (
+        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-1.5rem)]">
+          <AIChat />
+        </div>
+      )}
     </div>
   );
 }
