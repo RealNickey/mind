@@ -1,3 +1,6 @@
+import * as cheerio from 'cheerio';
+import { parse as parseIsoDuration, toSeconds } from 'iso8601-duration';
+
 export interface Recipe {
   title: string;
   ingredients: string[];
@@ -9,40 +12,40 @@ export interface Recipe {
 }
 
 export async function extractRecipeFromHTML(html: string): Promise<Recipe | null> {
-  // A simplistic cheerio-style regex-based extraction since cheerio might not be available,
-  // or use JSON-LD parsing which is the modern standard for recipe websites.
   try {
-    // Look for JSON-LD scripts
-    const jsonLdRegex = /<script\s+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-    let match;
+    const $ = cheerio.load(html);
+    let recipeMatch: Recipe | null = null;
     
-    while ((match = jsonLdRegex.exec(html)) !== null) {
-      const content = match[1];
+    $('script[type="application/ld+json"]').each((_, el) => {
       try {
+        const content = $(el).html();
+        if (!content) return;
         const parsed = JSON.parse(content);
         
-        // Handle array of JSON-LD objects or single object
         const items = Array.isArray(parsed) ? parsed : [parsed];
         
         for (const item of items) {
           if (item['@type'] === 'Recipe' || (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
-            return extractFromJSONLD(item);
+            recipeMatch = extractFromJSONLD(item);
+            return false;
           }
           
           if (item['@graph']) {
             const recipeNode = item['@graph'].find((node: any) => node['@type'] === 'Recipe');
-            if (recipeNode) return extractFromJSONLD(recipeNode);
+            if (recipeNode) {
+              recipeMatch = extractFromJSONLD(recipeNode);
+              return false;
+            }
           }
         }
       } catch (e) {
-        // Continue to next match
       }
-    }
+    });
+
+    if (recipeMatch) return recipeMatch;
     
-    // Fallback if no JSON-LD found: return a generic structure based on simple regexes
-    const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
     return {
-      title: titleMatch ? titleMatch[1].trim() : 'Unknown Recipe',
+      title: $('title').text().trim() || 'Unknown Recipe',
       ingredients: [],
       instructions: [],
       prepTimeMinutes: 0,
@@ -59,11 +62,12 @@ export async function extractRecipeFromHTML(html: string): Promise<Recipe | null
 function extractFromJSONLD(recipe: any): Recipe {
   const parseTime = (isoDuration: string) => {
     if (!isoDuration) return 0;
-    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-    if (!match) return 0;
-    const hours = parseInt(match[1] || '0', 10);
-    const minutes = parseInt(match[2] || '0', 10);
-    return (hours * 60) + minutes;
+    try {
+      const parsed = parseIsoDuration(isoDuration);
+      return Math.floor(toSeconds(parsed) / 60);
+    } catch {
+      return 0;
+    }
   };
 
   const parseInstructions = (instructions: any): string[] => {

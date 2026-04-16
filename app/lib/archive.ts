@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { convert as htmlToText } from 'html-to-text';
+import * as cheerio from 'cheerio';
 import { normalizeSourceUrl } from './url-utils';
 
 const FETCH_TIMEOUT_MS = 12_000;
@@ -31,13 +32,15 @@ export interface ArchiveSnapshot {
 }
 
 function extractTitle(html: string): string | null {
-  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (!match || !match[1]) {
+  try {
+    const $ = cheerio.load(html);
+    const title = $('title').text();
+    if (!title) return null;
+    const cleaned = title.replace(/\s+/g, ' ').trim();
+    return cleaned.length > 0 ? cleaned : null;
+  } catch (e) {
     return null;
   }
-
-  const cleaned = match[1].replace(/\s+/g, ' ').trim();
-  return cleaned.length > 0 ? cleaned : null;
 }
 
 function toExcerpt(text: string): string | null {

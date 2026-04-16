@@ -1,35 +1,29 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
+import { z } from 'zod';
 
-function asTrimmedString(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
+const mergeTagsSchema = z.object({
+  sourceTagId: z.string().trim().min(1, "sourceTagId is required"),
+  targetTagId: z.string().trim().min(1, "targetTagId is required"),
+  keepSourceTag: z.boolean().optional().default(false),
+}).refine(data => data.sourceTagId !== data.targetTagId, {
+  message: "sourceTagId and targetTagId must be different",
+  path: ["targetTagId"],
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const sourceTagId = asTrimmedString(body?.sourceTagId);
-    const targetTagId = asTrimmedString(body?.targetTagId);
-    const keepSourceTag = Boolean(body?.keepSourceTag);
+    const parseResult = mergeTagsSchema.safeParse(body);
 
-    if (!sourceTagId || !targetTagId) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'sourceTagId and targetTagId are required' },
+        { error: 'Invalid payload', details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
 
-    if (sourceTagId === targetTagId) {
-      return NextResponse.json(
-        { error: 'sourceTagId and targetTagId must be different' },
-        { status: 400 }
-      );
-    }
+    const { sourceTagId, targetTagId, keepSourceTag } = parseResult.data;
 
     const { data: sourceTag, error: sourceTagError } = await db
       .from('Tag')

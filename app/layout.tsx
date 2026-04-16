@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display, Caveat } from "next/font/google";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { FilmGrainEffect } from "./components/FilmGrainEffect";
+import Providers from "./components/Providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -36,10 +37,12 @@ export default function RootLayout({
       className={`${inter.variable} ${playfair.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col relative overflow-hidden">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <FilmGrainEffect />
-          {children}
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <FilmGrainEffect />
+            {children}
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

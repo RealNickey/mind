@@ -1,3 +1,5 @@
+import { parse } from 'tldts';
+
 export type ContentType =
   | 'article'
   | 'movie'
@@ -23,41 +25,42 @@ export type ContentType =
 export function detectContentType(url: string, metadata: any): ContentType {
   try {
     const parsedUrl = new URL(url);
-    const hostname = parsedUrl.hostname.toLowerCase();
     const pathname = parsedUrl.pathname.toLowerCase();
+    const tld = parse(url);
+    const domain = tld.domain || '';
 
     // Specific domain detection
-    if (hostname.includes('twitter.com') || hostname.includes('x.com')) {
+    if (domain === 'twitter.com' || domain === 'x.com') {
       return 'twitter';
     }
-    if (hostname.includes('instagram.com')) {
+    if (domain === 'instagram.com') {
       return 'instagram';
     }
-    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+    if (domain === 'youtube.com' || domain === 'youtu.be') {
       return 'youtube';
     }
-    if (hostname.includes('github.com')) {
+    if (domain === 'github.com') {
       return 'github';
     }
-    if (hostname.includes('imdb.com')) {
+    if (domain === 'imdb.com') {
       if (pathname.includes('/title/')) {
         // Simple heuristic; TV shows usually have specific metadata tags, but 'movie' or 'tvshow' can be inferred here or by TMDB later.
         return metadata?.open_graph?.type === 'video.tv_show' ? 'tvshow' : 'movie';
       }
     }
-    if (hostname.includes('openlibrary.org') || hostname.includes('goodreads.com')) {
+    if (domain === 'openlibrary.org' || domain === 'goodreads.com') {
       return 'book';
     }
-    if (hostname.includes('spotify.com') || hostname.includes('music.apple.com') || hostname.includes('soundcloud.com')) {
+    if (domain === 'spotify.com' || domain === 'apple.com' || domain === 'soundcloud.com') {
       return 'music';
     }
-    if (hostname.includes('maps.google.com') || hostname.includes('openstreetmap.org')) {
+    if (domain === 'google.com' || domain === 'openstreetmap.org') {
       return 'place';
     }
-    if (hostname.includes('amazon.com') || hostname.includes('ebay.com') || hostname.includes('etsy.com')) {
+    if (domain === 'amazon.com' || domain === 'ebay.com' || domain === 'etsy.com') {
       return 'product';
     }
-    if (hostname.includes('allrecipes.com') || hostname.includes('foodnetwork.com')) {
+    if (domain === 'allrecipes.com' || domain === 'foodnetwork.com') {
       return 'recipe';
     }
 

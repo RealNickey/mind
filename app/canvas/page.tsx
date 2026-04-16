@@ -1,34 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Canvas from '@/app/components/Canvas';
 import CanvasToolbar from '@/app/components/CanvasToolbar';
 import type { ItemCardItem } from '@/app/components/ItemCard';
 import { ItemQuickAIPanel } from '@/app/components/ItemQuickAIPanel';
 
 export default function CanvasPage() {
-  const [items, setItems] = useState<ItemCardItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedAIItem, setSelectedAIItem] = useState<ItemCardItem | null>(null);
 
-  useEffect(() => {
-    async function loadItems() {
-      try {
-        const res = await fetch('/api/items/list'); // Assuming this exists or falls back
-        if (res.ok) {
-          const data = await res.json() as ItemCardItem[];
-          setItems(data);
-        }
-      } catch (e) {
-        console.error("Failed to load items", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadItems();
-  }, []);
+  const { data: items = [], isLoading } = useQuery<ItemCardItem[]>({
+    queryKey: ['canvas-items'],
+    queryFn: async () => {
+      const res = await fetch('/api/items/list');
+      if (!res.ok) throw new Error('Failed to load items');
+      return res.json();
+    },
+  });
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading canvas...</div>;
   }
 

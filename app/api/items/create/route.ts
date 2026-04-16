@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
+import { z } from 'zod';
 import { detectContentType } from '@/app/lib/content-detection';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 import { normalizeSourceUrl } from '@/app/lib/url-utils';
@@ -11,42 +12,40 @@ import type { Database } from '@/app/lib/database.types';
 
 type ItemMetadataInsert = Database['public']['Tables']['ItemMetadata']['Insert'];
 
-function asTrimmedString(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function asObject(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
-function normalizeTagNames(tags: unknown): string[] {
-  if (!Array.isArray(tags)) {
-    return [];
-  }
-
-  const names = tags
-    .map((entry) => (typeof entry === 'string' ? entry.trim().toLowerCase() : ''))
-    .filter((entry) => entry.length > 0);
-
-  return [...new Set(names)];
-}
+const createItemSchema = z.object({
+  title: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  description: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  content: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  text: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  type: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  sourceUrl: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  url: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  imageUrl: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  image: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  favicon: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  customData: z.record(z.string(), z.unknown()).nullable().optional().transform(v => (!v || Array.isArray(v) ? null : v)),
+  tags: z.array(z.string()).optional().default([]).transform(tags => [...new Set(tags.map(t => typeof t === 'string' ? t.trim().toLowerCase() : '').filter(Boolean))]),
+  collectionId: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+  userId: z.string().trim().optional().transform(v => v === "" ? undefined : v),
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const parseResult = createItemSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid payload', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
     const {
       title,
       description,
       content,
-      text,
+      text: normalizedText,
       type,
       sourceUrl,
       url,
@@ -57,11 +56,10 @@ export async function POST(req: Request) {
       tags,
       collectionId,
       userId,
-    } = body;
+    } = parseResult.data;
 
-    const normalizedText = asTrimmedString(text);
-    const rawSourceUrl = asTrimmedString(sourceUrl) ?? asTrimmedString(url);
-    const normalizedSourceUrl = normalizeSourceUrl(rawSourceUrl) ?? rawSourceUrl;
+    const rawSourceUrl = sourceUrl ?? url;
+    const normalizedSourceUrl = rawSourceUrl ? (normalizeSourceUrl(rawSourceUrl) ?? rawSourceUrl) : undefined;
 
     let extractedMetadata: Awaited<ReturnType<typeof extractUrlMetadata>> | null = null;
     let linkHealthResult: Awaited<ReturnType<typeof checkLinkHealth>> | null = null;
@@ -88,21 +86,21 @@ export async function POST(req: Request) {
       ? detectContentType(normalizedSourceUrl, null)
       : 'note';
 
-    const requestedType = asTrimmedString(type)?.toLowerCase();
+    const requestedType = type?.toLowerCase();
     const normalizedType = requestedType ?? detectedType;
     const safeType = normalizedType === 'unknown'
       ? (normalizedSourceUrl ? 'link' : 'note')
       : normalizedType;
 
     const normalizedTitle =
-      asTrimmedString(title) ??
+      title ??
       extractedMetadata?.title ??
       normalizedSourceUrl ??
       'Untitled item';
 
-    const normalizedDescription = asTrimmedString(description) ?? extractedMetadata?.description ?? undefined;
-    const normalizedContent = asTrimmedString(content) ?? normalizedText;
-    const normalizedUserId = asTrimmedString(userId);
+    const normalizedDescription = description ?? extractedMetadata?.description ?? undefined;
+    const normalizedContent = content ?? normalizedText;
+    const normalizedUserId = userId;
 
     const { data: item, error } = await db
       .from('Item')
@@ -119,11 +117,11 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
-    const normalizedImageUrl = asTrimmedString(imageUrl) ?? asTrimmedString(image) ?? extractedMetadata?.image ?? undefined;
-    const normalizedFavicon = asTrimmedString(favicon) ?? extractedMetadata?.favicon ?? undefined;
+    const normalizedImageUrl = imageUrl ?? image ?? extractedMetadata?.image ?? undefined;
+    const normalizedFavicon = favicon ?? extractedMetadata?.favicon ?? undefined;
 
     const customDataPayload: Record<string, unknown> = {
-      ...(asObject(customData) ?? {}),
+      ...(customData ?? {}),
       ...(normalizedText ? { extractedText: normalizedText } : {}),
       ...(normalizedSourceUrl ? { normalizedSourceUrl } : {}),
       ...(linkHealthResult
@@ -173,8 +171,7 @@ export async function POST(req: Request) {
       if (metaError) throw metaError;
     }
 
-    const tagNames = normalizeTagNames(tags);
-    for (const tagName of tagNames) {
+    for (const tagName of tags) {
       const { data: existingTag, error: selectErr } = await db
         .from('Tag')
         .select('*')
@@ -210,11 +207,10 @@ export async function POST(req: Request) {
       if (tagLinkError) throw tagLinkError;
     }
 
-    const normalizedCollectionId = asTrimmedString(collectionId);
-    if (normalizedCollectionId) {
+    if (collectionId) {
       const { error: collectionLinkError } = await db
         .from('_CollectionToItem')
-        .upsert({ A: normalizedCollectionId, B: item.id }, { onConflict: 'A,B' });
+        .upsert({ A: collectionId, B: item.id }, { onConflict: 'A,B' });
 
       if (collectionLinkError) throw collectionLinkError;
     }

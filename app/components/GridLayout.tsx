@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MasonryGrid from "./MasonryGrid";
 import type { ItemCardItem } from "./ItemCard";
 import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot } from "lucide-react";
@@ -52,259 +53,161 @@ function dedupeById(items: Item[]): Item[] {
   });
 }
 
-function matchesCurrentQuery(item: Item, activeFilter: string, query: string): boolean {
-  if (activeFilter !== "all" && item.type !== activeFilter) {
-    return false;
-  }
-
-  if (!query) {
-    return true;
-  }
-
-  const needle = query.toLowerCase();
-  return (
-    item.title.toLowerCase().includes(needle) ||
-    (item.description ?? "").toLowerCase().includes(needle) ||
-    (item.content ?? "").toLowerCase().includes(needle)
-  );
-}
-
 export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE }: GridLayoutProps) {
   const router = useRouter();
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchMode, setSearchMode] = useState<"keyword" | "semantic">("keyword");
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialItems.length >= pageSize);
   const [error, setError] = useState<string | null>(null);
   const [showAssistant, setShowAssistant] = useState(false);
   const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
-
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
 
   const observerTarget = useRef<HTMLDivElement>(null);
-
-  const buildListUrl = useCallback(
-    (offset: number) => {
-      const params = new URLSearchParams({
-        limit: String(pageSize),
-        offset: String(offset),
-      });
-
-      if (activeFilter !== "all") {
-        params.set("type", activeFilter);
-      }
-
-      if (debouncedSearch) {
-        params.set("q", debouncedSearch);
-      }
-
-      return `/api/items/list?${params.toString()}`;
-    },
-    [activeFilter, debouncedSearch, pageSize]
-  );
-
-  const loadInitialItems = useCallback(async () => {
-    setIsRefreshing(true);
-    setError(null);
-
-    try {
-      if (searchMode === "semantic" && debouncedSearch) {
-        const semanticResponse = await fetch("/api/search/semantic", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: debouncedSearch,
-            limit: pageSize,
-          }),
-          cache: "no-store",
-        });
-
-        if (!semanticResponse.ok) {
-          throw new Error("Failed to load semantic results");
-        }
-
-        const payload = await semanticResponse.json() as { results?: Item[] };
-        const semanticItems = Array.isArray(payload.results) ? payload.results : [];
-
-        setItems(dedupeById(semanticItems));
-        setHasMore(false);
-        return;
-      }
-
-      const res = await fetch(buildListUrl(0), { cache: "no-store" });
-      if (!res.ok) {
-        throw new Error("Failed to load items");
-      }
-
-      const data = (await res.json()) as Item[];
-      setItems(data);
-      setHasMore(data.length === pageSize);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load items. Please try again.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [buildListUrl, debouncedSearch, pageSize, searchMode]);
-
-  const loadMoreItems = useCallback(async () => {
-    if (searchMode === "semantic" || isLoadingMore || isRefreshing || !hasMore) {
-      return;
-    }
-
-    setIsLoadingMore(true);
-    setError(null);
-
-    try {
-      const res = await fetch(buildListUrl(items.length), { cache: "no-store" });
-      if (!res.ok) {
-        throw new Error("Failed to load more items");
-      }
-
-      const data = (await res.json()) as Item[];
-      setItems((prev) => dedupeById([...prev, ...data]));
-      setHasMore(data.length === pageSize);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load more items.");
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [buildListUrl, hasMore, isLoadingMore, isRefreshing, items.length, pageSize, searchMode]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       setDebouncedSearch(searchQuery.trim());
     }, 250);
-
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
-  useEffect(() => {
-    void loadInitialItems();
-  }, [loadInitialItems]);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteQuery({
+    queryKey: ['items', activeFilter, debouncedSearch, searchMode],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      if (searchMode === "semantic" && debouncedSearch) {
+        const semanticResponse = await fetch("/api/search/semantic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: debouncedSearch, limit: pageSize }),
+        });
+        if (!semanticResponse.ok) throw new Error("Failed to load semantic results");
+        const payload = await semanticResponse.json() as { results?: Item[] };
+        return Array.isArray(payload.results) ? payload.results : [];
+      }
 
-  useEffect(() => {
-    if (viewMode !== "grid" || searchMode === "semantic") {
-      return;
+      const params = new URLSearchParams({
+        limit: String(pageSize),
+        offset: String(pageParam),
+      });
+      if (activeFilter !== "all") params.set("type", activeFilter);
+      if (debouncedSearch) params.set("q", debouncedSearch);
+
+      const res = await fetch(`/api/items/list?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to load items");
+      return res.json() as Promise<Item[]>;
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (searchMode === "semantic" || lastPage.length < pageSize) return undefined;
+      return allPages.reduce((acc, page) => acc + page.length, 0);
+    },
+    initialData: () => {
+      if (activeFilter === "all" && !debouncedSearch && searchMode === "keyword") {
+        return {
+          pages: [initialItems],
+          pageParams: [0],
+        };
+      }
+      return undefined;
+    },
+  });
+
+  const items = dedupeById(data?.pages.flat() || []);
+
+  const addPastedItemMutation = useMutation({
+    mutationFn: async (trimmed: string) => {
+      const isUrl = /^https?:\/\//i.test(trimmed);
+      const res = await fetch('/api/items/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: isUrl ? trimmed : trimmed.slice(0, 80),
+          description: isUrl ? undefined : trimmed.slice(0, 280),
+          content: isUrl ? undefined : trimmed,
+          type: isUrl ? undefined : 'note',
+          sourceUrl: isUrl ? trimmed : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save pasted content');
+      return res.json() as Promise<Item>;
+    },
+    onSuccess: (newItem) => {
+      queryClient.setQueryData(['items', activeFilter, debouncedSearch, searchMode], (old: any) => {
+        if (!old) return old;
+        const newPages = [...old.pages];
+        newPages[0] = [newItem, ...newPages[0]];
+        return { ...old, pages: newPages };
+      });
+    },
+    onError: () => {
+      setError("Failed to save pasted content.");
     }
+  });
 
+  useEffect(() => {
+    if (viewMode !== "grid" || searchMode === "semantic") return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          void loadMoreItems();
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
       { threshold: 0.6 }
     );
-
     const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
-
+    if (currentTarget) observer.observe(currentTarget);
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      if (currentTarget) observer.unobserve(currentTarget);
       observer.disconnect();
     };
-  }, [hasMore, isLoadingMore, loadMoreItems, searchMode, viewMode]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchMode, viewMode]);
 
   const handlePaste = useCallback((text: string) => {
-    const persistPastedContent = async () => {
-      const trimmed = text.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      const isUrl = /^https?:\/\//i.test(trimmed);
-
-      try {
-        setError(null);
-
-        const res = await fetch('/api/items/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: isUrl ? trimmed : trimmed.slice(0, 80),
-            description: isUrl ? undefined : trimmed.slice(0, 280),
-            content: isUrl ? undefined : trimmed,
-            type: isUrl ? undefined : 'note',
-            sourceUrl: isUrl ? trimmed : undefined,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error('Failed to save pasted content');
-        }
-
-        const createdItem = (await res.json()) as Item;
-        if (matchesCurrentQuery(createdItem, activeFilter, debouncedSearch)) {
-          setItems((prev) => dedupeById([createdItem, ...prev]));
-        } else {
-          await loadInitialItems();
-        }
-      } catch (err) {
-        console.error(err);
-        setError('Failed to save pasted content.');
-      }
-    };
-
-    void persistPastedContent();
-  }, [activeFilter, debouncedSearch, loadInitialItems]);
+    const trimmed = text.trim();
+    if (trimmed) addPastedItemMutation.mutate(trimmed);
+  }, [addPastedItemMutation]);
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      // Don't intercept if user is typing in an input/textarea
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' || 
-        target.tagName === 'TEXTAREA' || 
-        target.isContentEditable
-      ) {
-        return;
-      }
-
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       const text = e.clipboardData?.getData("text/plain");
-      if (text) {
-        handlePaste(text);
-      }
+      if (text) handlePaste(text);
     };
     window.addEventListener("paste", handleGlobalPaste);
     return () => window.removeEventListener("paste", handleGlobalPaste);
   }, [handlePaste]);
 
-  const handleExpand = (item: Item) => {
-    router.push(`/items/${item.id}`);
-  };
-
-  const handleEdit = (item: Item) => {
-    router.push(`/items/${item.id}/edit`);
-  };
-
-  const handleDelete = async (item: Item) => {
-    try {
-      setError(null);
-      const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        throw new Error('Failed to delete item');
-      }
-
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
-      setSelectedAIItem((prev) => (prev?.id === item.id ? null : prev));
-    } catch (err) {
-      console.error(err);
-      setError('Failed to delete item.');
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete item');
+    },
+    onSuccess: (_, id) => {
+      queryClient.setQueryData(['items', activeFilter, debouncedSearch, searchMode], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: Item[]) => page.filter(item => item.id !== id))
+        };
+      });
     }
+  });
+
+  const handleExpand = (item: Item) => router.push(`/items/${item.id}`);
+  const handleEdit = (item: Item) => router.push(`/items/${item.id}/edit`);
+  const handleDelete = (item: Item) => {
+    deleteMutation.mutate(item.id);
+    setSelectedAIItem((prev) => (prev?.id === item.id ? null : prev));
   };
 
   const handleCanvas = (item: Item) => {
@@ -353,7 +256,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               className="w-full pl-10 pr-4 py-2 rounded-full border border-zinc-200 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               aria-label="Search items"
             />
-            {isRefreshing && (
+            {(isLoading || isFetchingNextPage) && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={14} />
             )}
           </div>
@@ -434,13 +337,13 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               </div>
             )}
 
-            {isRefreshing && items.length === 0 && (
+            {isLoading && items.length === 0 && (
               <div className="flex h-56 items-center justify-center">
                 <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" aria-label="Loading items" />
               </div>
             )}
 
-            {!isRefreshing && (
+            {!isLoading && (
               <MasonryGrid
                 items={items}
                 onExpand={handleExpand}
@@ -452,19 +355,19 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               />
             )}
 
-            {searchMode !== 'semantic' && hasMore && items.length > 0 && (
+            {searchMode !== 'semantic' && hasNextPage && items.length > 0 && (
               <div 
                 ref={observerTarget} 
                 className="w-full h-24 mt-4 flex items-center justify-center"
                 aria-live="polite"
               >
-                {isLoadingMore && (
+                {isFetchingNextPage && (
                   <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" aria-label="Loading more items" />
                 )}
               </div>
             )}
 
-            {!isRefreshing && items.length === 0 && (
+            {!isLoading && items.length === 0 && (
               <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
                 <div className="w-16 h-16 mb-4 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
                   <Search size={24} className="text-zinc-400" aria-hidden="true" />

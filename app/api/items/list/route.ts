@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { hydrateItems } from '@/app/lib/item-hydration';
+import { z } from 'zod';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-function parsePositiveInt(value: string | null, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return fallback;
-  }
-  return Math.floor(parsed);
-}
+const listQuerySchema = z.object({
+  limit: z.coerce.number().int().min(0).default(DEFAULT_LIMIT).transform((val) => Math.min(val || DEFAULT_LIMIT, MAX_LIMIT)),
+  offset: z.coerce.number().int().min(0).default(0),
+  type: z.string().optional().nullable(),
+  tag: z.string().optional().nullable(),
+  collectionId: z.string().optional().nullable(),
+  q: z.string().optional().nullable(),
+});
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
@@ -24,16 +26,17 @@ function intersection(a: string[], b: string[]): string[] {
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
+    const searchParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+    const parseResult = listQuerySchema.safeParse(searchParams);
 
-    const requestedLimit = parsePositiveInt(searchParams.get('limit'), DEFAULT_LIMIT);
-    const limit = Math.min(requestedLimit || DEFAULT_LIMIT, MAX_LIMIT);
-    const offset = parsePositiveInt(searchParams.get('offset'), 0);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: parseResult.error.format() },
+        { status: 400 }
+      );
+    }
 
-    const type = searchParams.get('type');
-    const tag = searchParams.get('tag');
-    const collectionId = searchParams.get('collectionId');
-    const textQuery = searchParams.get('q');
+    const { limit, offset, type, tag, collectionId, q: textQuery } = parseResult.data;
 
     let filteredItemIds: string[] | null = null;
 

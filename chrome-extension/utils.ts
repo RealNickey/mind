@@ -1,3 +1,5 @@
+import { Readability } from '@mozilla/readability';
+
 export interface ExtractedData {
   title: string;
   url: string;
@@ -7,15 +9,26 @@ export interface ExtractedData {
 }
 
 export function extractMetadata(): ExtractedData {
+  let article: any = null;
+  try {
+    const documentClone = document.cloneNode(true) as Document;
+    const reader = new Readability(documentClone);
+    article = reader.parse();
+  } catch (e) {
+    console.error('Readability extraction failed', e);
+  }
+
   const title =
     document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
     document.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+    article?.title ||
     document.title ||
     '';
 
   const description =
     document.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
     document.querySelector('meta[name="description"]')?.getAttribute('content') ||
+    article?.excerpt ||
     '';
 
   const image =
@@ -29,7 +42,7 @@ export function extractMetadata(): ExtractedData {
     document.querySelector('meta[property="og:url"]')?.getAttribute('content') ||
     window.location.href;
 
-  const content = document.body.innerText.slice(0, 5000); // rudimentary extraction, replace with Readability in production
+  const content = article?.content || document.body.innerHTML.slice(0, 5000);
 
   return { title, url, description, image, content };
 }

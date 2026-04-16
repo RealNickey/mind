@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
+import { z } from 'zod';
+
+const updateItemSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  description: z.string().optional(),
+  content: z.string().optional(),
+  type: z.string().trim().min(1).optional(),
+});
 
 export async function PUT(
   req: Request,
@@ -9,7 +17,16 @@ export async function PUT(
   try {
     const resolvedParams = await params;
     const body = await req.json();
-    const { title, description, content, type } = body;
+    const parseResult = updateItemSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid payload', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { title, description, content, type } = parseResult.data;
 
     const { data: item, error } = await db
       .from('Item')
