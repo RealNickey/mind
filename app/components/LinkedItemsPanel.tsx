@@ -3,21 +3,43 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
+interface LinkedItem {
+  id: string;
+  title: string;
+}
+
+interface LinkedEdge {
+  id: string;
+  targetItem?: LinkedItem | null;
+  sourceItem?: LinkedItem | null;
+}
 
 export function LinkedItemsPanel({ itemId }: { itemId: string }) {
-  const [links, setLinks] = useState<{ sourceLinks: any[], targetLinks: any[] }>({ sourceLinks: [], targetLinks: [] });
+  const [links, setLinks] = useState<{ sourceLinks: LinkedEdge[]; targetLinks: LinkedEdge[] }>({
+    sourceLinks: [],
+    targetLinks: [],
+  });
 
   useEffect(() => {
     async function fetchLinks() {
-      const res = await fetch(`/api/items/${itemId}`);
-      const data = await res.json();
-      setLinks({
-        sourceLinks: data.sourceLinks || [],
-        targetLinks: data.targetLinks || []
-      });
+      try {
+        const res = await fetch(`/api/items/${itemId}`);
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+        setLinks({
+          sourceLinks: data.sourceLinks || [],
+          targetLinks: data.targetLinks || []
+        });
+      } catch (error) {
+        console.error('Failed to load linked items:', error);
+      }
     }
-    fetchLinks();
+
+    void fetchLinks();
   }, [itemId]);
 
   return (
@@ -33,13 +55,19 @@ export function LinkedItemsPanel({ itemId }: { itemId: string }) {
               <p className="text-sm text-gray-400">No outgoing links.</p>
             ) : (
               <ul className="list-disc pl-4 text-sm">
-                {links.sourceLinks.map((link) => (
-                  <li key={link.id}>
-                    <Link href={`/items/${link.targetItem.id}`} className="text-[#FFB3D9] hover:underline">
-                      {link.targetItem.title}
-                    </Link>
-                  </li>
-                ))}
+                {links.sourceLinks.map((link) => {
+                  if (!link.targetItem?.id) {
+                    return null;
+                  }
+
+                  return (
+                    <li key={link.id}>
+                      <Link href={`/items/${link.targetItem.id}`} className="text-[#FFB3D9] hover:underline">
+                        {link.targetItem.title}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -49,13 +77,19 @@ export function LinkedItemsPanel({ itemId }: { itemId: string }) {
               <p className="text-sm text-gray-400">No incoming links.</p>
             ) : (
               <ul className="list-disc pl-4 text-sm">
-                {links.targetLinks.map((link) => (
-                  <li key={link.id}>
-                    <Link href={`/items/${link.sourceItem.id}`} className="text-[#B3E5D1] hover:underline">
-                      {link.sourceItem.title}
-                    </Link>
-                  </li>
-                ))}
+                {links.targetLinks.map((link) => {
+                  if (!link.sourceItem?.id) {
+                    return null;
+                  }
+
+                  return (
+                    <li key={link.id}>
+                      <Link href={`/items/${link.sourceItem.id}`} className="text-[#B3E5D1] hover:underline">
+                        {link.sourceItem.title}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

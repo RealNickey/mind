@@ -1,21 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import Masonry from "react-masonry-css";
-import ItemCard from "./ItemCard";
+import ItemCard, { type ItemCardItem } from "./ItemCard";
 
-interface Item {
-  id: string;
-  title: string;
-  description: string | null;
-  type: string;
-  createdAt: string | Date;
-  metadata?: {
-    imageUrl?: string | null;
-    sourceUrl?: string | null;
-  } | null;
-  tags?: { id: string; name: string }[];
-}
+type Item = ItemCardItem;
 
 interface MasonryGridProps {
   items: Item[];

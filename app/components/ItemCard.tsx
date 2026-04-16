@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Copy, Edit2, Expand, LayoutTemplate, MoreHorizontal, Trash2 } from "lucide-react";
 import CardMenu from "./CardMenu";
+import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
 
 import {
   ContextMenu,
@@ -13,32 +14,35 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 
-interface Item {
+export interface ItemCardItem {
   id: string;
-  title: string;
-  description: string | null;
-  type: string;
+  title: PreviewItem['title'];
+  description: PreviewItem['description'];
+  content?: PreviewItem['content'];
+  type: PreviewItem['type'];
+  sourceUrl?: string | null;
+  customColor?: string | null;
   createdAt: string | Date;
-  metadata?: {
-    imageUrl?: string | null;
-    sourceUrl?: string | null;
-  } | null;
+  metadata?: PreviewItem['metadata'];
   tags?: { id: string; name: string }[];
 }
 
 interface ItemCardProps {
-  item: Item;
-  onExpand?: (item: Item) => void;
-  onEdit?: (item: Item) => void;
-  onDelete?: (item: Item) => void;
-  onCanvas?: (item: Item) => void;
+  item: ItemCardItem;
+  onExpand?: (item: ItemCardItem) => void;
+  onEdit?: (item: ItemCardItem) => void;
+  onDelete?: (item: ItemCardItem) => void;
+  onCanvas?: (item: ItemCardItem) => void;
 }
 
 export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }: ItemCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const formattedDate = format(new Date(item.createdAt), "MMM d, yyyy");
+  const parsedDate = new Date(item.createdAt);
+  const formattedDate = Number.isNaN(parsedDate.getTime())
+    ? "Recently"
+    : format(parsedDate, "MMM d, yyyy");
 
   return (
     <ContextMenu>
@@ -49,33 +53,15 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }:
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => onExpand?.(item)}
         >
-          {item.metadata?.imageUrl && (
-            <div className="relative aspect-auto w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.metadata.imageUrl}
-                alt={item.title}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-            </div>
-          )}
+          <div className="pointer-events-none">
+            <ItemPreview item={item} />
+          </div>
 
-          <div className="flex flex-col p-4 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm">
+          <div className="border-t border-zinc-100 bg-white/80 p-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80">
             <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
               <span className="uppercase tracking-wider font-semibold">{item.type}</span>
               <span>{formattedDate}</span>
             </div>
-            
-            <h3 className="mb-1 text-lg font-playfair font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2">
-              {item.title}
-            </h3>
-            
-            {item.description && (
-              <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-3 font-inter">
-                {item.description}
-              </p>
-            )}
 
             {item.tags && item.tags.length > 0 && (
               <div className="mt-auto flex flex-wrap gap-1">
@@ -135,7 +121,7 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas }:
           <span>Edit</span>
         </ContextMenuItem>
         <ContextMenuItem onClick={() => {
-          navigator.clipboard.writeText(item.metadata?.sourceUrl || window.location.href);
+          navigator.clipboard.writeText(item.metadata?.sourceUrl || item.sourceUrl || window.location.href);
         }}>
           <Copy className="mr-2 h-4 w-4" />
           <span>Copy Link</span>
