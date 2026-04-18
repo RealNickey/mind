@@ -38,6 +38,7 @@ export default function CardMenu({ item, onClose, onInspectAI, onEdit, onDelete 
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
       className="absolute right-0 top-10 z-50 w-52 rounded-2xl border border-white/20 dark:border-zinc-800/20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl p-1.5 text-[10px] font-bold uppercase tracking-widest shadow-2xl ring-1 ring-black/5 dark:ring-white/5"
+      style={{ transformOrigin: "top right" }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-0.5">

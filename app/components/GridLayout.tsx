@@ -11,6 +11,7 @@ import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
 import { fetchSemanticSearch } from "@/app/lib/semantic-search";
 import { createItem, deleteItem, listItems, type CreateItemPayload } from "@/app/lib/api-client/items";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 type Item = ItemCardItem;
 type ItemPages = InfiniteData<Item[], number>;
@@ -224,11 +225,11 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top Header / Filter Bar */}
-      <div className="sticky top-4 z-40 mx-auto w-[calc(100%-2rem)] max-w-7xl">
-        <div className="bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl border border-white/20 dark:border-zinc-800/20 px-6 py-3 flex items-center justify-between gap-6 rounded-2xl shadow-xl shadow-black/5 dark:shadow-white/5 ring-1 ring-black/5 dark:ring-white/5">
+      <div className="sticky top-6 z-40 mx-auto w-[calc(100%-3rem)] max-w-7xl">
+        <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-3xl border border-white/20 dark:border-zinc-800/30 px-8 py-4 flex items-center justify-between gap-8 rounded-[1.5rem] shadow-2xl shadow-black/5 dark:shadow-white/5 ring-1 ring-black/5 dark:ring-white/5">
           
           <div 
-            className="flex items-center gap-3 overflow-x-auto pb-1 max-w-[40%] scrollbar-hide mask-fade-right"
+            className="flex items-center gap-3 overflow-x-auto pb-1 max-w-[45%] scrollbar-hide mask-fade-right"
             role="tablist"
             aria-label="Filter items by type"
           >
@@ -268,40 +269,54 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
 
             <div className="flex items-center gap-1.5 bg-zinc-100/30 dark:bg-zinc-800/30 p-1 rounded-xl">
-              <button
-                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
-                  searchMode === "semantic"
-                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
-                onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
-                aria-label="Toggle semantic search"
-                title="Toggle semantic search"
-              >
-                <Sparkles size={16} aria-hidden="true" />
-              </button>
-              <button
-                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
-                  showAssistant
-                    ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-700 dark:text-emerald-400"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
-                onClick={() => setShowAssistant((prev) => !prev)}
-                aria-label="Toggle AI assistant"
-                title="Toggle AI assistant"
-              >
-                <Bot size={16} aria-hidden="true" />
-              </button>
-              <button 
-                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
-                  viewMode === 'canvas' ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-700 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-                }`}
-                onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
-                aria-label="Toggle Canvas View"
-                title="Toggle Canvas View"
-              >
-                <LayoutTemplate size={16} aria-hidden="true" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                      searchMode === "semantic"
+                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    }`}
+                    onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
+                    aria-label="Toggle semantic search"
+                  >
+                    <Sparkles size={16} aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle semantic search</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                      showAssistant
+                        ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-700 dark:text-emerald-400"
+                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    }`}
+                    onClick={() => setShowAssistant((prev) => !prev)}
+                    aria-label="Toggle AI assistant"
+                  >
+                    <Bot size={16} aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle AI assistant</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                      viewMode === 'canvas' ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-700 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                    }`}
+                    onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
+                    aria-label="Toggle Canvas View"
+                  >
+                    <LayoutTemplate size={16} aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle Canvas View</TooltipContent>
+              </Tooltip>
             </div>
 
             <div className="flex items-center gap-1">

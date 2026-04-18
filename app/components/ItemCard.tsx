@@ -6,6 +6,7 @@ import { Copy, Edit2, Expand, LayoutTemplate, MoreHorizontal, Sparkles, Trash2 }
 import { motion, AnimatePresence } from "framer-motion";
 import CardMenu from "./CardMenu";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import {
   ContextMenu,
@@ -66,8 +67,8 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
           </div>
 
           <div className="flex flex-col flex-1 border-t border-zinc-200/40 bg-white/20 p-4 backdrop-blur-md dark:border-zinc-800/40 dark:bg-black/10">
-            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500">
-              <span className="rounded px-1.5 py-0.5 bg-zinc-100/50 dark:bg-zinc-800/50">{item.type}</span>
+            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-600 dark:text-zinc-400">
+              <span className="rounded px-1.5 py-0.5 bg-zinc-200/50 dark:bg-zinc-800/50">{item.type}</span>
               <span>{formattedDate}</span>
             </div>
 
@@ -96,28 +97,43 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
                 className="absolute top-2.5 right-2.5 flex gap-1 items-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl p-1 rounded-lg shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5"
                 onClick={(e) => e.stopPropagation()}
               >
-                <button
-                  onClick={(e) => { e.stopPropagation(); onInspectAI?.(item); }}
-                  className="rounded-md p-1.5 text-zinc-500 hover:bg-amber-50 hover:text-amber-600 dark:text-zinc-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400 transition-colors"
-                  title="AI Insights"
-                  aria-label={`Open AI insights for ${item.title}`}
-                >
-                  <Sparkles size={14} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onCanvas?.(item); }}
-                  className="rounded-md p-1.5 text-zinc-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
-                  title="Send to Canvas"
-                >
-                  <LayoutTemplate size={14} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onExpand?.(item); }}
-                  className="rounded-md p-1.5 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-colors"
-                  title="Expand"
-                >
-                  <Expand size={14} />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onInspectAI?.(item); }}
+                      className="rounded-md p-1.5 text-zinc-500 hover:bg-amber-50 hover:text-amber-600 dark:text-zinc-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400 transition-colors"
+                      aria-label={`Open AI insights for ${item.title}`}
+                    >
+                      <Sparkles size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>AI Insights</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onCanvas?.(item); }}
+                      className="rounded-md p-1.5 text-zinc-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
+                    >
+                      <LayoutTemplate size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Send to Canvas</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onExpand?.(item); }}
+                      className="rounded-md p-1.5 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-colors"
+                    >
+                      <Expand size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Expand</TooltipContent>
+                </Tooltip>
+                
                 <div className="relative">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}

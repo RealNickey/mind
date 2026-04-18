@@ -62,14 +62,16 @@ export default function Home() {
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
           <Link
             href="/dashboard"
-            className="group relative inline-flex items-center justify-center gap-3 px-10 py-4 text-sm font-bold uppercase tracking-widest text-white transition-all duration-500 ease-ui bg-zinc-900 dark:bg-white dark:text-zinc-900 rounded-xl hover:scale-105 active:scale-95 shadow-xl shadow-black/10 dark:shadow-white/10"
+            className="group relative inline-flex items-center justify-center gap-3 px-10 py-4 text-sm font-bold uppercase tracking-widest text-white transition-all duration-150 ease-out bg-zinc-900 dark:bg-white dark:text-zinc-900 rounded-xl hover:scale-[1.02] active:scale-[0.97] shadow-xl shadow-black/10 dark:shadow-white/10"
           >
-            Enter mind
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            <span className="relative z-10 flex items-center justify-center gap-3">
+              Enter mind
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </span>
           </Link>
           <Link
             href="/graph"
-            className="group inline-flex items-center justify-center gap-3 px-10 py-4 text-sm font-bold uppercase tracking-widest transition-all duration-500 ease-ui bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:scale-105 active:scale-95 shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+            className="group inline-flex items-center justify-center gap-3 px-10 py-4 text-sm font-bold uppercase tracking-widest transition-all duration-150 ease-out bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:scale-[1.02] active:scale-[0.97] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
           >
             Explore
           </Link>

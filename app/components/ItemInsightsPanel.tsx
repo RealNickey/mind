@@ -127,7 +127,7 @@ export function ItemInsightsPanel({ itemId, sourceUrl, initialLinkHealth = null 
               type="button"
               onClick={refreshLinkHealth}
               disabled={isRefreshingHealth}
-              className="inline-flex items-center gap-2 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-all hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-30"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/50 text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-all duration-150 ease-out hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-800 active:scale-[0.97] shadow-sm disabled:opacity-30 disabled:active:scale-100"
             >
               <RefreshCw className={`h-3 w-3 ${isRefreshingHealth ? 'animate-spin' : ''}`} />
               Refresh

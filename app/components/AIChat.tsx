@@ -187,7 +187,7 @@ export function AIChat() {
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100"
+            className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 transition-all duration-150 hover:scale-[1.02] active:scale-[0.97] disabled:opacity-30 disabled:hover:scale-100"
           >
             <Send size={14} />
           </button>

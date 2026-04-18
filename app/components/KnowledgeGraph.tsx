@@ -91,9 +91,9 @@ export function KnowledgeGraph({ nodes, links, onNodeClick }: KnowledgeGraphProp
 
     if (node.title) {
       const sprite = new SpriteText(node.title.length > 25 ? node.title.slice(0, 25) + "..." : node.title);
-      sprite.color = "rgba(255, 255, 255, 0.9)";
-      sprite.textHeight = 3;
-      sprite.position.set(0, -(node.val || 2) - 4, 0);
+      sprite.color = "rgba(255, 255, 255, 0.95)";
+      sprite.textHeight = 4.5;
+      sprite.position.set(0, -(node.val || 2) - 6, 0);
       group.add(sprite);
     }
 

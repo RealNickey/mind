@@ -28,10 +28,10 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
   return (
     <Masonry
       breakpointCols={breakpointColumnsObj}
-      className="flex w-auto pb-20 -ml-4"
-      columnClassName="pl-4 bg-clip-padding"
+      className="flex w-auto pb-24 -ml-6"
+      columnClassName="pl-6 bg-clip-padding"
     >
-      <div className="mb-4">
+      <div className="mb-6">
         <div 
           className="group relative flex flex-col justify-center items-center overflow-hidden rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 p-8 h-[250px] text-center transition-all hover:bg-zinc-100 hover:border-zinc-300 dark:bg-zinc-900/50 dark:border-zinc-800 dark:hover:bg-zinc-800"
           onPaste={(e) => {
@@ -42,7 +42,7 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
         >
           <span className="text-zinc-500 dark:text-zinc-400 font-medium mb-3 text-lg font-playfair">Add a thought...</span>
           <textarea 
-            className="w-full h-full absolute inset-0 opacity-0 resize-none cursor-text p-4"
+            className="w-full h-full absolute inset-0 opacity-0 resize-none cursor-text p-6"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -71,7 +71,7 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
       </div>
 
       {items.map((item) => (
-        <div key={item.id} className="mb-4">
+        <div key={item.id} className="mb-6">
           <ItemCard
             item={item}
             onExpand={onExpand}

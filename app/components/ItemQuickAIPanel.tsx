@@ -151,7 +151,7 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors bg-zinc-100/50 dark:bg-zinc-800/50"
+              className="rounded-xl p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-100/50 dark:bg-zinc-800/50 transition-all duration-150 ease-out hover:scale-[1.05] active:scale-[0.97]"
               aria-label="Close panel"
             >
               <X className="h-4 w-4" />
@@ -164,7 +164,7 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
             </span>
             <Link
               href={`/items/${item.id}`}
-              className="rounded-lg border border-zinc-200/50 dark:border-zinc-800/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-all hover:bg-white dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-sm"
+              className="rounded-lg border border-zinc-200/50 dark:border-zinc-800/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-all duration-150 ease-out hover:bg-white dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-[0.97] shadow-sm"
             >
               Full Item
             </Link>

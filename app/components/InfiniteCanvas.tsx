@@ -77,10 +77,7 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
       ref={containerRef} 
       className="w-full h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
       style={{
-        backgroundImage: `
-          linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
-        `,
+        backgroundImage: "var(--canvas-grid)",
         backgroundSize: '40px 40px'
       }}
     >
