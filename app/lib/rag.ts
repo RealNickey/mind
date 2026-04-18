@@ -1,6 +1,7 @@
 import { db } from './db';
 import { generateEmbedding } from './vectors';
 import type { Database, Tables } from './database.types';
+import { serializeVector } from './vector-codec';
 
 type MatchItemRow = Database['public']['Functions']['match_items']['Returns'][number];
 type RagItem = Pick<Tables<'Item'>, 'id' | 'title' | 'description' | 'content' | 'type'>;
@@ -13,7 +14,7 @@ export async function searchSimilarItems(query: string, limit = 5): Promise<Simi
   try {
     const vector = await generateEmbedding(query);
     
-    const vectorStr = `[${vector.join(',')}]`;
+    const vectorStr = serializeVector(vector);
     
     const { data: matchData, error: rpcErr } = await db.rpc('match_items', {
       query_embedding: vectorStr,

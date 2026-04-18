@@ -1,4 +1,5 @@
 import React from 'react';
+import { getDisplayDomain } from '@/app/lib/url-utils';
 import ArticlePreview from './ArticlePreview';
 import BookPreview from './BookPreview';
 import ColorPreview from './ColorPreview';
@@ -93,18 +94,6 @@ function asStringArray(value: unknown): string[] | undefined {
     .filter((entry): entry is string => Boolean(entry));
 
   return parsed.length > 0 ? parsed : undefined;
-}
-
-function getDomain(url?: string | null): string {
-  if (!url) {
-    return 'saved content';
-  }
-
-  try {
-    return new URL(url).hostname.replace(/^www\./i, '');
-  } catch {
-    return url;
-  }
 }
 
 function getYear(value?: string | null): string {
@@ -244,6 +233,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
   const imageUrl = metadata?.imageUrl ?? asString(customData?.imageUrl) ?? asString(customData?.image);
   const favicon = metadata?.favicon ?? asString(customData?.favicon);
   const normalizedType = item.type.toLowerCase();
+  const sourceDomain = getDisplayDomain(sourceUrl, 'saved content') ?? 'saved content';
 
   switch (normalizedType) {
     case 'article': {
@@ -251,7 +241,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
         <ArticlePreview
           title={item.title}
           excerpt={item.description ?? item.content ?? 'Saved article'}
-          domain={getDomain(sourceUrl)}
+          domain={sourceDomain}
           thumbnail={imageUrl ?? undefined}
           readingTime={metadata?.readingTime ? `${metadata.readingTime} min read` : undefined}
         />
@@ -338,7 +328,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
           title={item.title}
           price={asString(customData?.price) ?? 'N/A'}
           currency={asString(customData?.currency) ?? '$'}
-          store={asString(customData?.store) ?? getDomain(sourceUrl)}
+          store={asString(customData?.store) ?? sourceDomain}
           imageUrl={imageUrl ?? svgPlaceholder('Product')}
           rating={asNumber(customData?.rating)}
           reviews={asNumber(customData?.reviews)}
@@ -380,7 +370,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
       return (
         <YoutubePreview
           title={item.title}
-          channel={asString(customData?.channel) ?? getDomain(sourceUrl)}
+          channel={asString(customData?.channel) ?? sourceDomain}
           thumbnail={imageUrl ?? svgPlaceholder('YouTube')}
           views={asString(customData?.views) ?? 'N/A'}
           date={asString(customData?.date) ?? 'Recently'}

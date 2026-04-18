@@ -5,6 +5,7 @@ import { normalizeSourceUrl } from '@/app/lib/url-utils';
 import { checkLinkHealth } from '@/app/lib/link-health';
 import { captureArchiveSnapshot } from '@/app/lib/archive';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const fetchMetadataSchema = z.object({
   url: z.string().trim().min(1, 'URL is required'),
@@ -13,17 +14,12 @@ const fetchMetadataSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const parsed = fetchMetadataSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: parsed.error.flatten() },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, fetchMetadataSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { url, skipEnrichment } = parsed.data;
+    const { url, skipEnrichment } = parsedBody.data;
 
     const normalizedUrl = normalizeSourceUrl(url);
     if (!normalizedUrl) {

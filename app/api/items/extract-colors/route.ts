@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractColors } from '@/app/lib/image-processing';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const extractColorsSchema = z.object({
   imageUrl: z.string().trim().url('A valid image URL is required'),
@@ -8,17 +9,12 @@ const extractColorsSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const parsed = extractColorsSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Image URL is required', details: parsed.error.flatten() },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, extractColorsSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { imageUrl } = parsed.data;
+    const { imageUrl } = parsedBody.data;
 
     const colors = await extractColors(imageUrl);
 

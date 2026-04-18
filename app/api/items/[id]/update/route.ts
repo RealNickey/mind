@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const updateItemSchema = z.object({
   title: z.string().trim().min(1).optional(),
@@ -16,17 +17,12 @@ export async function PUT(
 ) {
   try {
     const resolvedParams = await params;
-    const body = await req.json();
-    const parseResult = updateItemSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+    const parsedBody = await parseJsonBody(req, updateItemSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { title, description, content, type } = parseResult.data;
+    const { title, description, content, type } = parsedBody.data;
 
     const { data: item, error } = await db
       .from('Item')

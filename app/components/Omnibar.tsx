@@ -2,16 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Sparkles, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface SearchResultItem {
-  id?: string;
-  title?: string;
-  url?: string;
-  content?: string;
-  description?: string;
-}
+import {
+  fetchSemanticSearch,
+  semanticSearchQueryKey,
+  type SemanticSearchResultPreview,
+} from '@/app/lib/semantic-search';
 
 type ChatMessageLike = {
   content?: unknown;
@@ -47,47 +45,48 @@ function getMessageText(message: ChatMessageLike): string {
 export function Omnibar() {
   const [mode, setMode] = useState<'search' | 'chat'>('search');
   const [inputLocal, setInputLocal] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { messages, sendMessage, status } = useChat();
   const isChatLoading = status === 'submitted' || status === 'streaming';
+  const {
+    data: semanticResults,
+    isFetching: isSearching,
+    error: searchError,
+    refetch: refetchSearch,
+  } = useQuery({
+    queryKey: semanticSearchQueryKey({ query: debouncedSearch, limit: 10 }),
+    queryFn: ({ signal }) =>
+      fetchSemanticSearch<SemanticSearchResultPreview>({
+        query: debouncedSearch,
+        limit: 10,
+        signal,
+      }),
+    enabled: mode === 'search' && debouncedSearch.length > 0,
+    staleTime: 60_000,
+  });
+  const searchResults = semanticResults?.results ?? [];
+  const searchErrorMessage = searchError instanceof Error ? searchError.message : null;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
       setMode(prev => prev === 'search' ? 'chat' : 'search');
-      setSearchResults([]);
-    }
-  };
-
-  const performSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api/search/semantic?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json() as { results?: SearchResultItem[] };
-        setSearchResults(data.results ?? []);
-      }
-    } catch (e) {
-      console.error('Search error:', e);
-    } finally {
-      setIsSearching(false);
+      setDebouncedSearch('');
     }
   };
 
   useEffect(() => {
-    if (mode === 'search') {
-      const delayDebounceFn = setTimeout(() => {
-        performSearch(inputLocal);
-      }, 300);
-      return () => clearTimeout(delayDebounceFn);
+    if (mode !== 'search') {
+      return;
     }
+
+    const delayDebounceFn = setTimeout(() => {
+      setDebouncedSearch(inputLocal.trim());
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
   }, [inputLocal, mode]);
 
   const onSubmit = (e: React.FormEvent) => {
@@ -97,7 +96,18 @@ export function Omnibar() {
       void sendMessage({ text: inputLocal });
       setInputLocal('');
     } else {
-      performSearch(inputLocal);
+      const trimmedQuery = inputLocal.trim();
+      if (!trimmedQuery) {
+        setDebouncedSearch('');
+        return;
+      }
+
+      if (trimmedQuery !== debouncedSearch) {
+        setDebouncedSearch(trimmedQuery);
+        return;
+      }
+
+      void refetchSearch();
     }
   };
 
@@ -184,7 +194,11 @@ export function Omnibar() {
                   <Loader2 size={20} className="animate-spin text-zinc-400 dark:text-zinc-500" /> 
                   <span className="text-sm font-medium">Scanning memory...</span>
                </div>
-            ) : searchResults.length > 0 ? (
+             ) : searchErrorMessage ? (
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center text-red-600 dark:text-red-300">
+                 <p className="text-sm font-medium">{searchErrorMessage}</p>
+               </motion.div>
+             ) : searchResults.length > 0 ? (
               <motion.div 
                 className="flex flex-col gap-1.5 p-1"
                 initial="hidden"
@@ -199,12 +213,12 @@ export function Omnibar() {
               >
                 {searchResults.map((result, idx) => (
                   <motion.div 
-                    key={idx} 
+                    key={result.id ?? idx}
                     variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
                     className="p-3.5 bg-white/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-100/50 dark:border-zinc-800/50 shadow-sm flex items-start gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 hover:shadow-md transition-all cursor-pointer group"
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{result.title || result.url || 'Untitled'}</h4>
+                      <h4 className="font-medium text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{result.title || result.sourceUrl || 'Untitled'}</h4>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-relaxed">{result.content || result.description}</p>
                     </div>
                   </motion.div>

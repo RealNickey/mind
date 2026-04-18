@@ -2,18 +2,21 @@ import React from 'react';
 
 export default function QuotePreview({ text, author, source }: { text: string, author: string, source?: string }) {
   return (
-    <div className="p-6 bg-gradient-to-br from-[#f8f9fa] to-white rounded-xl shadow-sm border border-gray-100 flex flex-col relative font-playfair">
-      <div className="absolute top-2 left-2 text-[#e2e8f0] text-6xl leading-none font-serif opacity-50 select-none">
+    <div className="p-8 flex flex-col relative group/quote">
+      <div className="absolute top-4 left-4 text-zinc-200 dark:text-zinc-800 text-6xl leading-none font-serif opacity-50 select-none group-hover/quote:text-indigo-200/50 transition-colors duration-500">
         &ldquo;
       </div>
       
-      <blockquote className="text-xl md:text-2xl text-gray-800 font-medium leading-relaxed z-10 pt-4 pl-2 italic">
+      <blockquote className="text-xl text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed z-10 pt-4 font-heading tracking-tight italic">
         {text}
       </blockquote>
       
-      <div className="mt-6 flex flex-col items-end border-t border-gray-100 pt-4 text-sm font-sans z-10">
-        <span className="font-bold text-gray-900">— {author}</span>
-        {source && <span className="text-gray-500 text-xs italic mt-0.5">{source}</span>}
+      <div className="mt-8 flex flex-col items-start border-t border-zinc-100 dark:border-zinc-800/50 pt-4 text-[11px] font-bold uppercase tracking-wider z-10">
+        <span className="text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+          <span className="w-4 h-px bg-zinc-300 dark:bg-zinc-700" />
+          {author}
+        </span>
+        {source && <span className="text-zinc-400 dark:text-zinc-500 font-medium lowercase italic mt-1 ml-6">{source}</span>}
       </div>
     </div>
   );

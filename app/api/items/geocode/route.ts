@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { parseJsonBody } from '@/app/api/_validation';
 
 const geocodeRequestSchema = z.object({
   address: z.string().trim().min(1, "Address is required").max(500),
@@ -15,17 +16,12 @@ const geocodeResponseSchema = z.array(
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const parsed = geocodeRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Address is required", details: parsed.error.flatten() },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, geocodeRequestSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { address } = parsed.data;
+    const { address } = parsedBody.data;
 
     const geocodeReqUrl = new URL("https://nominatim.openstreetmap.org/search");
     geocodeReqUrl.searchParams.set("q", address);

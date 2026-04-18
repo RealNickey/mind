@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const deleteItemsSchema = z.object({
   ids: z.array(z.string().trim().min(1)).min(1),
@@ -8,14 +9,15 @@ const deleteItemsSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = deleteItemsSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Valid IDs array required' }, { status: 400 });
+    const parsedBody = await parseJsonBody(req, deleteItemsSchema, {
+      invalidBodyMessage: 'Valid IDs array required',
+      includeValidationDetails: false,
+    });
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { ids } = parsed.data;
+    const { ids } = parsedBody.data;
 
     const { error } = await db
       .from('Item')

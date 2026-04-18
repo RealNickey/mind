@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
+import { serializeVector } from '@/app/lib/vector-codec';
 
 export async function GET() {
   try {
-    const probeVector = `[${Array(384).fill(1).join(',')}]`;
+    const probeVector = serializeVector(Array(384).fill(1));
 
     const { error: functionError } = await db.rpc('match_items', {
       query_embedding: probeVector,

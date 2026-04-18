@@ -3,6 +3,7 @@ import { db } from '@/app/lib/db';
 import { generateTagsForContent } from '@/app/lib/ai-tagging';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const autoTagSchema = z.object({
   itemId: z.string().trim().min(1, 'itemId is required'),
@@ -10,17 +11,12 @@ const autoTagSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = autoTagSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'itemId is required', details: parsed.error.flatten() },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, autoTagSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { itemId } = parsed.data;
+    const { itemId } = parsedBody.data;
 
     const item = await getItemByIdWithRelations(itemId);
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const createCollectionSchema = z.object({
   name: z.string().trim().min(1),
@@ -11,14 +12,12 @@ const createCollectionSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = createCollectionSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    const parsedBody = await parseJsonBody(req, createCollectionSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { name, description, isAuto, userId } = parsed.data;
+    const { name, description, isAuto, userId } = parsedBody.data;
 
     const { data: collection, error } = await db
       .from('Collection')

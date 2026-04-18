@@ -1,46 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { getItemById, type ItemLinkEdge } from '@/app/lib/api-client/items';
+import { ApiClientError } from '@/app/lib/api-client/http';
 
-interface LinkedItem {
-  id: string;
-  title: string;
+interface LinkedItemsData {
+  sourceLinks: ItemLinkEdge[];
+  targetLinks: ItemLinkEdge[];
 }
 
-interface LinkedEdge {
-  id: string;
-  targetItem?: LinkedItem | null;
-  sourceItem?: LinkedItem | null;
-}
+const EMPTY_LINKS: LinkedItemsData = { sourceLinks: [], targetLinks: [] };
 
 export function LinkedItemsPanel({ itemId }: { itemId: string }) {
-  const [links, setLinks] = useState<{ sourceLinks: LinkedEdge[]; targetLinks: LinkedEdge[] }>({
-    sourceLinks: [],
-    targetLinks: [],
-  });
-
-  useEffect(() => {
-    async function fetchLinks() {
+  const { data } = useQuery<LinkedItemsData, Error, LinkedItemsData>({
+    queryKey: ['item-links', itemId],
+    enabled: Boolean(itemId),
+    staleTime: 60_000,
+    retry: false,
+    queryFn: async ({ signal }) => {
       try {
-        const res = await fetch(`/api/items/${itemId}`);
-        if (!res.ok) {
-          return;
-        }
-
-        const data = await res.json();
-        setLinks({
-          sourceLinks: data.sourceLinks || [],
-          targetLinks: data.targetLinks || []
-        });
+        const item = await getItemById(itemId, signal);
+        return {
+          sourceLinks: item.sourceLinks ?? EMPTY_LINKS.sourceLinks,
+          targetLinks: item.targetLinks ?? EMPTY_LINKS.targetLinks,
+        };
       } catch (error) {
+        if (error instanceof ApiClientError) {
+          return EMPTY_LINKS;
+        }
         console.error('Failed to load linked items:', error);
+        return EMPTY_LINKS;
       }
-    }
-
-    void fetchLinks();
-  }, [itemId]);
+    },
+  });
+  const links = data ?? EMPTY_LINKS;
 
   return (
     <Card className="w-full">

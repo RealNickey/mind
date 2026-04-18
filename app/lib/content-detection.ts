@@ -33,6 +33,37 @@ type DetectionMetadata = {
   schema_org?: SchemaOrgNode[];
 } | null;
 
+const APPLE_MUSIC_PATH_HINTS = ['/album/', '/song/', '/playlist/', '/artist/', '/music-video/'];
+
+function isHostOrSubdomain(hostname: string, target: string): boolean {
+  return hostname === target || hostname.endsWith(`.${target}`);
+}
+
+function isAppleMusicUrl(hostname: string, pathname: string): boolean {
+  if (isHostOrSubdomain(hostname, 'music.apple.com')) {
+    return true;
+  }
+
+  return (
+    isHostOrSubdomain(hostname, 'itunes.apple.com') &&
+    APPLE_MUSIC_PATH_HINTS.some((segment) => pathname.includes(segment))
+  );
+}
+
+function isGoogleMapsUrl(hostname: string, pathname: string, domainWithoutSuffix: string): boolean {
+  if (domainWithoutSuffix !== 'google') {
+    return false;
+  }
+
+  const isMapsSubdomain =
+    hostname === 'maps.google.com' ||
+    hostname.startsWith('maps.google.') ||
+    hostname.includes('.maps.google.');
+  const isMapsPath = pathname === '/maps' || pathname.startsWith('/maps/');
+
+  return isMapsSubdomain || isMapsPath;
+}
+
 function hasSchemaType(node: SchemaOrgNode, expectedType: string): boolean {
   const schemaType = node['@type'];
   if (typeof schemaType === 'string') {
@@ -49,9 +80,11 @@ function hasSchemaType(node: SchemaOrgNode, expectedType: string): boolean {
 export function detectContentType(url: string, metadata: DetectionMetadata): ContentType {
   try {
     const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase();
     const pathname = parsedUrl.pathname.toLowerCase();
-    const tld = parse(url);
+    const tld = parse(hostname);
     const domain = tld.domain || '';
+    const domainWithoutSuffix = tld.domainWithoutSuffix || '';
 
     // Specific domain detection
     if (domain === 'twitter.com' || domain === 'x.com') {
@@ -75,10 +108,10 @@ export function detectContentType(url: string, metadata: DetectionMetadata): Con
     if (domain === 'openlibrary.org' || domain === 'goodreads.com') {
       return 'book';
     }
-    if (domain === 'spotify.com' || domain === 'apple.com' || domain === 'soundcloud.com') {
+    if (domain === 'spotify.com' || domain === 'soundcloud.com' || isAppleMusicUrl(hostname, pathname)) {
       return 'music';
     }
-    if (domain === 'google.com' || domain === 'openstreetmap.org') {
+    if (domain === 'openstreetmap.org' || isGoogleMapsUrl(hostname, pathname, domainWithoutSuffix)) {
       return 'place';
     }
     if (domain === 'amazon.com' || domain === 'ebay.com' || domain === 'etsy.com') {

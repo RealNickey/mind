@@ -9,6 +9,7 @@ import { captureArchiveSnapshot } from '@/app/lib/archive';
 import { extractUrlMetadata } from '@/app/lib/metadata';
 import { autoCreateSemanticLinks } from '@/app/lib/semantic-links';
 import type { Database } from '@/app/lib/database.types';
+import { parseJsonBody } from '@/app/api/_validation';
 
 type ItemMetadataInsert = Database['public']['Tables']['ItemMetadata']['Insert'];
 
@@ -31,14 +32,9 @@ const createItemSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parseResult = createItemSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+    const parsedBody = await parseJsonBody(req, createItemSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
     const {
@@ -56,7 +52,7 @@ export async function POST(req: Request) {
       tags,
       collectionId,
       userId,
-    } = parseResult.data;
+    } = parsedBody.data;
 
     const rawSourceUrl = sourceUrl ?? url;
     const normalizedSourceUrl = rawSourceUrl ? (normalizeSourceUrl(rawSourceUrl) ?? rawSourceUrl) : undefined;

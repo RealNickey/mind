@@ -1,37 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from "lucide-react";
-
-interface ColorData {
-  hex: string;
-  name?: string;
-}
+import { extractImageColors, imageColorsQueryKey, type ImageColorData } from '@/app/lib/client-api';
 
 export function ImageAnalysis({ imageUrl }: { imageUrl: string }) {
-  const [colors, setColors] = useState<ColorData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: colors = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery<ImageColorData[], Error>({
+    queryKey: imageColorsQueryKey(imageUrl),
+    queryFn: ({ signal }) => extractImageColors(imageUrl, signal),
+    enabled: Boolean(imageUrl),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const fetchColors = async () => {
-      try {
-        const res = await fetch("/api/items/extract-colors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl }),
-        });
-        const data = await res.json();
-        if (data.colors) setColors(data.colors);
-      } catch (e) {
-        console.error("Color fetch failed", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (imageUrl) fetchColors();
-  }, [imageUrl]);
+  if (!imageUrl) return null;
 
-  if (loading) return <div className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /> Analyzing image...</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /> Analyzing image...</div>;
+
+  if (isError) {
+    return <div className="text-sm text-red-600 dark:text-red-300">{error.message}</div>;
+  }
 
   if (colors.length === 0) return null;
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import type { Json, Tables } from '@/app/lib/database.types';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const saveCanvasSchema = z.object({
   nodes: z.array(
@@ -21,14 +22,12 @@ function isJsonObject(value: Json | null): value is Record<string, Json | undefi
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = saveCanvasSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    const parsedBody = await parseJsonBody(req, saveCanvasSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { nodes } = parsed.data;
+    const { nodes } = parsedBody.data;
 
     // Save canvas positions in item metadata
     const { data: existingMetadata, error: fetchErr } = await db

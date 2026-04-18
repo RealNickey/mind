@@ -1,9 +1,31 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useMutation } from '@tanstack/react-query';
 import CanvasNode from '@/app/components/CanvasNode';
 import type { ItemCardItem } from '@/app/components/ItemCard';
+import { saveCanvasLayout, type CanvasNodePosition } from '@/app/lib/client-api';
+
+type CanvasItem = ItemCardItem & {
+  x?: number;
+  y?: number;
+};
+
+function toCanvasNodes(items: CanvasItem[]): CanvasNodePosition[] {
+  return items
+    .filter((item): item is CanvasItem & { x: number; y: number } =>
+      typeof item.x === 'number' &&
+      Number.isFinite(item.x) &&
+      typeof item.y === 'number' &&
+      Number.isFinite(item.y)
+    )
+    .map((item) => ({
+      id: item.id,
+      x: item.x,
+      y: item.y,
+    }));
+}
 
 interface CanvasProps {
   initialItems: ItemCardItem[];
@@ -11,11 +33,21 @@ interface CanvasProps {
 }
 
 export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState<CanvasItem[]>(initialItems);
   const [isPanning, setIsPanning] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const latestNodesRef = useRef<CanvasNodePosition[]>(toCanvasNodes(initialItems));
+  const saveInFlightRef = useRef<Promise<unknown> | null>(null);
+  const saveQueuedRef = useRef(false);
+
+  const saveCanvasMutation = useMutation<{ success: boolean }, Error, CanvasNodePosition[]>({
+    mutationFn: (nodes) => saveCanvasLayout(nodes),
+    onSuccess: () => setSaveError(null),
+    onError: (error) => setSaveError(error.message),
+  });
 
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -28,20 +60,41 @@ export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      await fetch('/api/canvas/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes: items }),
+  const commitLatestSave = useCallback(() => {
+    const inFlightSave = (async () => {
+      do {
+        saveQueuedRef.current = false;
+        const nodes = latestNodesRef.current;
+        if (nodes.length === 0) {
+          return;
+        }
+
+        await saveCanvasMutation.mutateAsync(nodes);
+      } while (saveQueuedRef.current);
+    })()
+      .catch(() => undefined)
+      .finally(() => {
+        saveInFlightRef.current = null;
       });
-    } catch (err) {
-      console.error('Failed to save canvas state', err);
+
+    saveInFlightRef.current = inFlightSave;
+  }, [saveCanvasMutation]);
+
+  const handleSave = useCallback(() => {
+    if (saveInFlightRef.current) {
+      saveQueuedRef.current = true;
+      return;
     }
-  };
+
+    commitLatestSave();
+  }, [commitLatestSave]);
 
   const updateNodePosition = (id: string, x: number, y: number) => {
-    setItems(items.map(item => item.id === id ? { ...item, x, y } : item));
+    setItems((previousItems) => {
+      const nextItems = previousItems.map((item) => (item.id === id ? { ...item, x, y } : item));
+      latestNodesRef.current = toCanvasNodes(nextItems);
+      return nextItems;
+    });
   };
 
   return (
@@ -92,6 +145,16 @@ export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
           </motion.div>
         ))}
       </motion.div>
+
+      {saveError && (
+        <div
+          className="absolute bottom-3 right-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/60 dark:text-red-300"
+          role="status"
+          aria-live="polite"
+        >
+          {saveError}
+        </div>
+      )}
     </div>
   );
 }

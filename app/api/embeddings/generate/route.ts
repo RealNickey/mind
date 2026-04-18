@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { embed } from 'ai';
 import { cohere } from '@ai-sdk/cohere';
-import { EmbeddingRequest, EmbeddingResponse, APIErrorResponse } from '@/app/lib/types';
+import { EmbeddingResponse, APIErrorResponse } from '@/app/lib/types';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const embeddingRequestSchema = z.object({
   text: z.string().trim().min(1, 'Valid text is required').max(12000, 'Text is too long'),
@@ -10,17 +11,15 @@ const embeddingRequestSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body: EmbeddingRequest = await req.json();
-    const parsed = embeddingRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json<APIErrorResponse>(
-        { error: 'Valid text is required' },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, embeddingRequestSchema, {
+      invalidBodyMessage: 'Valid text is required',
+      includeValidationDetails: false,
+    });
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { text } = parsed.data;
+    const { text } = parsedBody.data;
 
     // Generate embedding using Cohere English v3.0 model (1024 dims)
     const { embedding } = await embed({

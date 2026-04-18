@@ -75,12 +75,18 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full relative overflow-hidden bg-zinc-50 dark:bg-zinc-950 cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
+      className="w-full h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
       style={{
-        backgroundImage: 'radial-gradient(circle, #00000015 1px, transparent 1px)',
-        backgroundSize: '24px 24px'
+        backgroundImage: `
+          linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px'
       }}
     >
+      {/* Noise Texture Layer */}
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
+
       <animated.div 
         className="absolute top-1/2 left-1/2 origin-center"
         style={{
@@ -113,12 +119,12 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
                 {positionedItems.map(item => (
                   <div 
                     key={`${rx}-${ry}-${item.id}`} 
-                    className="absolute shadow-lg hover:shadow-xl transition-shadow rounded-xl pointer-events-auto"
+                    className="absolute rounded-xl pointer-events-auto transition-transform duration-300 hover:z-50"
                     style={{
                       width: CARD_WIDTH,
                       transform: `translate3d(${item.origX}px, ${item.origY}px, 0)`
                     }}
-                    onPointerDown={(e) => e.stopPropagation()} // Prevent pan on item drag if needed
+                    onPointerDown={(e) => e.stopPropagation()} 
                   >
                     <ItemCard
                       item={item}

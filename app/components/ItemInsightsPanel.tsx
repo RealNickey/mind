@@ -1,40 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { AlertTriangle, GitMerge, RefreshCw, Sparkles } from 'lucide-react';
-
-type LinkHealthStatus = 'alive' | 'broken' | 'unknown';
-
-interface LinkHealthSnapshot {
-  status: LinkHealthStatus;
-  statusCode: number | null;
-  checkedAt: string;
-  error: string | null;
-}
-
-interface SemanticSuggestion {
-  itemId: string;
-  title: string;
-  type: string;
-  similarity: number;
-}
-
-interface MergeSuggestion {
-  itemId: string;
-  title: string;
-  type: string;
-  confidence: number;
-  reasons: string[];
-  kind: 'duplicate' | 'near-duplicate';
-}
-
-interface SuggestionsPayload {
-  embeddingSource: 'local' | 'groq';
-  semanticSuggestions: SemanticSuggestion[];
-  mergeSuggestions: MergeSuggestion[];
-}
+import {
+  getItemSuggestions,
+  refreshItemLinkHealth,
+  type ItemSuggestionsResponse,
+  type LinkHealthSnapshot,
+  type LinkHealthStatus,
+} from '@/app/lib/api-client/items';
 
 interface ItemInsightsPanelProps {
   itemId: string;
@@ -68,60 +44,49 @@ function getStatusStyles(status: LinkHealthStatus): string {
 
 export function ItemInsightsPanel({ itemId, sourceUrl, initialLinkHealth = null }: ItemInsightsPanelProps) {
   const [linkHealth, setLinkHealth] = useState<LinkHealthSnapshot | null>(initialLinkHealth);
-  const [isRefreshingHealth, setIsRefreshingHealth] = useState(false);
 
-  const { data: suggestions, isLoading: isLoadingSuggestions, error: rawError } = useQuery<SuggestionsPayload>({
+  const { data: suggestions, isLoading: isLoadingSuggestions, error: rawError } = useQuery<ItemSuggestionsResponse>({
     queryKey: ['suggestions', itemId],
-    queryFn: async () => {
-      const response = await fetch(`/api/items/${itemId}/suggestions`, { cache: 'no-store' });
-      if (!response.ok) throw new Error('Failed to load insights');
-      return response.json();
+    queryFn: async ({ signal }) => {
+      return getItemSuggestions(itemId, { signal, cache: 'no-store' });
     },
+    enabled: Boolean(itemId),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   const suggestionsError = rawError instanceof Error ? rawError.message : null;
 
-  const refreshLinkHealth = async () => {
-    if (!sourceUrl) {
-      return;
-    }
-
-    setIsRefreshingHealth(true);
-
-    try {
-      const response = await fetch('/api/items/link-health', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ itemId, limit: 1 }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh link status');
+  const refreshLinkHealthMutation = useMutation<LinkHealthSnapshot | null, Error>({
+    mutationFn: async () => {
+      if (!sourceUrl) {
+        return null;
       }
 
-      const payload = await response.json() as {
-        results?: Array<{
-          status: LinkHealthStatus;
-          statusCode: number | null;
-          checkedAt: string;
-          error: string | null;
-        }>;
-      };
-
+      const payload = await refreshItemLinkHealth({ itemId, limit: 1 });
       const latest = Array.isArray(payload.results) ? payload.results[0] : null;
       if (!latest) {
-        return;
+        return null;
       }
 
-      setLinkHealth({
+      return {
         status: latest.status,
         statusCode: latest.statusCode,
         checkedAt: latest.checkedAt,
         error: latest.error,
-      });
-    } catch (error) {
+      };
+    },
+    onSuccess: (latest) => {
+      if (!latest) {
+        return;
+      }
+
+      setLinkHealth(latest);
+    },
+    onError: (error) => {
       setLinkHealth((previous) => {
         const fallbackCheckedAt = new Date().toISOString();
         if (!previous) {
@@ -129,136 +94,153 @@ export function ItemInsightsPanel({ itemId, sourceUrl, initialLinkHealth = null 
             status: 'unknown',
             statusCode: null,
             checkedAt: fallbackCheckedAt,
-            error: error instanceof Error ? error.message : 'Unable to refresh link health',
+            error: error.message,
           };
         }
 
         return {
           ...previous,
           checkedAt: fallbackCheckedAt,
-          error: error instanceof Error ? error.message : 'Unable to refresh link health',
+          error: error.message,
         };
       });
-    } finally {
-      setIsRefreshingHealth(false);
+    },
+  });
+
+  const isRefreshingHealth = refreshLinkHealthMutation.isPending;
+
+  const refreshLinkHealth = () => {
+    if (!sourceUrl) {
+      return;
     }
+
+    refreshLinkHealthMutation.mutate();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Link Health</h3>
+    <div className="space-y-10">
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Link Health</h3>
           {sourceUrl && (
             <button
               type="button"
-              onClick={() => void refreshLinkHealth()}
+              onClick={refreshLinkHealth}
               disabled={isRefreshingHealth}
-              className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="inline-flex items-center gap-2 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition-all hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-30"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingHealth ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 ${isRefreshingHealth ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           )}
         </div>
 
-        {!sourceUrl && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No source URL available for health checks.</p>
-        )}
+        <div className="p-5 rounded-2xl bg-white/40 dark:bg-zinc-800/40 border border-white/20 dark:border-zinc-700/20 ring-1 ring-black/5 dark:ring-white/5">
+          {!sourceUrl && (
+            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">No source URL available.</p>
+          )}
 
-        {sourceUrl && !linkHealth && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No historical link checks yet.</p>
-        )}
+          {sourceUrl && !linkHealth && (
+            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">No health checks yet.</p>
+          )}
 
-        {sourceUrl && linkHealth && (
-          <div className="space-y-2 text-sm">
-            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusStyles(linkHealth.status)}`}>
-              {linkHealth.status.toUpperCase()}
-              {typeof linkHealth.statusCode === 'number' ? ` (${linkHealth.statusCode})` : ''}
-            </span>
-            <p className="text-zinc-600 dark:text-zinc-300">Checked: {formatCheckedAt(linkHealth.checkedAt)}</p>
-            {linkHealth.error && (
-              <p className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-300">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                {linkHealth.error}
+          {sourceUrl && linkHealth && (
+            <div className="space-y-3">
+              <span className={`inline-flex rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-widest border shadow-sm ${getStatusStyles(linkHealth.status)}`}>
+                {linkHealth.status}
+                {typeof linkHealth.statusCode === 'number' ? ` (${linkHealth.statusCode})` : ''}
+              </span>
+              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                Checked: <span className="text-zinc-900 dark:text-zinc-100">{formatCheckedAt(linkHealth.checkedAt)}</span>
               </p>
-            )}
-          </div>
-        )}
-      </div>
+              {linkHealth.error && (
+                <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-500 bg-rose-500/10 px-2 py-1 rounded-md">
+                  <AlertTriangle className="h-3 w-3" />
+                  {linkHealth.error}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          <Sparkles className="h-4 w-4 text-blue-500" />
+      <section className="space-y-4">
+        <h3 className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
           Semantic Suggestions
         </h3>
 
         {isLoadingSuggestions && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Finding semantically related items...</p>
+          <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
+            <Loader2 size={12} className="animate-spin" />
+            <span>Finding connections...</span>
+          </div>
         )}
 
         {suggestionsError && !isLoadingSuggestions && (
-          <p className="text-sm text-red-600 dark:text-red-300">{suggestionsError}</p>
+          <p className="text-xs font-medium text-rose-500">{suggestionsError}</p>
         )}
 
         {!isLoadingSuggestions && !suggestionsError && (suggestions?.semanticSuggestions.length ?? 0) === 0 && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No semantic suggestions available yet.</p>
+          <p className="text-xs font-medium text-zinc-400">No suggestions available.</p>
         )}
 
         {(suggestions?.semanticSuggestions.length ?? 0) > 0 && (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3">
             {suggestions?.semanticSuggestions.map((suggestion) => (
-              <li key={suggestion.itemId} className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-                <div className="flex items-start justify-between gap-3">
-                  <Link href={`/items/${suggestion.itemId}`} className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+              <li key={suggestion.itemId} className="group/item relative p-4 rounded-xl bg-white/40 dark:bg-zinc-800/40 border border-white/10 dark:border-zinc-700/10 hover:border-zinc-200 dark:hover:border-zinc-600 transition-all shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <Link href={`/items/${suggestion.itemId}`} className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-indigo-500 transition-colors leading-tight">
                     {suggestion.title}
                   </Link>
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  <span className="shrink-0 rounded-md bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
                     {(suggestion.similarity * 100).toFixed(0)}%
                   </span>
                 </div>
-                <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">{suggestion.type}</p>
+                <div className="mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  <span className="px-1 bg-zinc-100 dark:bg-zinc-800 rounded">{suggestion.type}</span>
+                </div>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          <GitMerge className="h-4 w-4 text-amber-500" />
-          Merge Suggestions
+      <section className="space-y-4">
+        <h3 className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+          Merge Candidates
         </h3>
 
         {!isLoadingSuggestions && (suggestions?.mergeSuggestions.length ?? 0) === 0 && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            No merge candidates detected from URL/title/content similarity.
-          </p>
+          <p className="text-xs font-medium text-zinc-400">No candidates detected.</p>
         )}
 
         {(suggestions?.mergeSuggestions.length ?? 0) > 0 && (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3">
             {suggestions?.mergeSuggestions.map((suggestion) => (
-              <li key={suggestion.itemId} className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
-                <div className="flex items-start justify-between gap-3">
-                  <Link href={`/items/${suggestion.itemId}`} className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+              <li key={suggestion.itemId} className="p-4 rounded-xl bg-white/40 dark:bg-zinc-800/40 border border-white/10 dark:border-zinc-700/10 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <Link href={`/items/${suggestion.itemId}`} className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-amber-500 transition-colors leading-tight">
                     {suggestion.title}
                   </Link>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <span className="shrink-0 rounded-md bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">
                     {(suggestion.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
-                <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">
-                  {suggestion.kind === 'duplicate' ? 'Duplicate' : 'Near duplicate'} • {suggestion.type}
-                </p>
+                <div className="mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  <span className="px-1 bg-zinc-100 dark:bg-zinc-800 rounded">{suggestion.type}</span>
+                  <span className="opacity-50">•</span>
+                  <span>{suggestion.kind}</span>
+                </div>
                 {suggestion.reasons.length > 0 && (
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{suggestion.reasons.join(', ')}</p>
+                  <p className="mt-2 text-[10px] font-medium text-zinc-500 dark:text-zinc-400 italic">
+                    {suggestion.reasons.join(', ')}
+                  </p>
                 )}
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

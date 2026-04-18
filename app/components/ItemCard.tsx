@@ -53,8 +53,10 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
           layout
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="group relative flex flex-col overflow-hidden rounded-2xl bg-white/60 shadow-sm backdrop-blur-xl transition-all hover:shadow-xl dark:bg-zinc-900/60 border border-zinc-200/50 dark:border-zinc-800/50"
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          className="group relative flex flex-col overflow-hidden rounded-xl bg-white/40 dark:bg-zinc-900/40 shadow-sm backdrop-blur-xl transition-all hover:shadow-md border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5 cursor-pointer"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => onExpand?.(item)}
@@ -63,9 +65,9 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
             <ItemPreview item={item} />
           </div>
 
-          <div className="flex flex-col flex-1 border-t border-zinc-200/50 bg-white/40 p-4 backdrop-blur-md dark:border-zinc-800/50 dark:bg-black/20">
-            <div className="mb-3 flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              <span className="uppercase tracking-wider rounded-md bg-zinc-100/50 dark:bg-zinc-800/50 px-2 py-1">{item.type}</span>
+          <div className="flex flex-col flex-1 border-t border-zinc-200/40 bg-white/20 p-4 backdrop-blur-md dark:border-zinc-800/40 dark:bg-black/10">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500">
+              <span className="rounded px-1.5 py-0.5 bg-zinc-100/50 dark:bg-zinc-800/50">{item.type}</span>
               <span>{formattedDate}</span>
             </div>
 
@@ -74,7 +76,7 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
                 {item.tags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="rounded-full bg-zinc-100/80 px-2.5 py-0.5 text-[11px] font-medium text-zinc-600 backdrop-blur-sm dark:bg-zinc-800/80 dark:text-zinc-300 border border-zinc-200/50 dark:border-zinc-700/50 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
+                    className="rounded-md bg-zinc-100/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200/30 dark:border-zinc-700/30 transition-colors hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60"
                   >
                     #{tag.name}
                   </span>
@@ -87,16 +89,16 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
           <AnimatePresence>
             {(isHovered || menuOpen) && (
               <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-3 right-3 flex gap-1.5 items-center bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-1 rounded-full shadow-sm border border-zinc-200/50 dark:border-zinc-800/50"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                className="absolute top-2.5 right-2.5 flex gap-1 items-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl p-1 rounded-lg shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   onClick={(e) => { e.stopPropagation(); onInspectAI?.(item); }}
-                  className="rounded-full p-1.5 text-zinc-500 hover:bg-blue-50 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-blue-500/20 dark:hover:text-blue-400 transition-colors"
+                  className="rounded-md p-1.5 text-zinc-500 hover:bg-amber-50 hover:text-amber-600 dark:text-zinc-400 dark:hover:bg-amber-500/10 dark:hover:text-amber-400 transition-colors"
                   title="AI Insights"
                   aria-label={`Open AI insights for ${item.title}`}
                 >
@@ -104,14 +106,14 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onCanvas?.(item); }}
-                  className="rounded-full p-1.5 text-zinc-500 hover:bg-purple-50 hover:text-purple-600 dark:text-zinc-400 dark:hover:bg-purple-500/20 dark:hover:text-purple-400 transition-colors"
+                  className="rounded-md p-1.5 text-zinc-500 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 transition-colors"
                   title="Send to Canvas"
                 >
                   <LayoutTemplate size={14} />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onExpand?.(item); }}
-                  className="rounded-full p-1.5 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400 transition-colors"
+                  className="rounded-md p-1.5 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-colors"
                   title="Expand"
                 >
                   <Expand size={14} />
@@ -119,7 +121,7 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
                 <div className="relative">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-                    className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors"
+                    className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors"
                   >
                     <MoreHorizontal size={14} />
                   </button>

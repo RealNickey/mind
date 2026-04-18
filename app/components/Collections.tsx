@@ -3,23 +3,12 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-
-interface Collection {
-  id: string;
-  name: string;
-  description: string | null;
-  isAuto: boolean;
-  _count?: { items: number };
-}
+import { listCollections, type CollectionListItem } from '@/app/lib/api-client/collections';
 
 export function Collections() {
-  const { data: collections = [], isLoading, isError } = useQuery<Collection[]>({
+  const { data: collections = [], isLoading, isError } = useQuery<CollectionListItem[]>({
     queryKey: ['collections'],
-    queryFn: async () => {
-      const res = await fetch('/api/collections/list');
-      if (!res.ok) throw new Error('Failed to load collections');
-      return res.json();
-    },
+    queryFn: ({ signal }) => listCollections(signal),
   });
 
   if (isLoading) {

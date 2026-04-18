@@ -5,6 +5,8 @@ import { cohere } from '@ai-sdk/cohere';
 import { hydrateItems } from '@/app/lib/item-hydration';
 import type { HydratedItem } from '@/app/lib/item-hydration';
 import { z } from 'zod';
+import { serializeVector } from '@/app/lib/vector-codec';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const semanticSearchSchema = z.object({
   query: z.string().trim().min(1),
@@ -45,14 +47,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = semanticSearchSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Valid query is required' }, { status: 400 });
+    const parsedBody = await parseJsonBody(req, semanticSearchSchema, {
+      invalidBodyMessage: 'Valid query is required',
+      includeValidationDetails: false,
+    });
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    return await handleSearch(parsed.data.query, parsed.data.limit);
+    return await handleSearch(parsedBody.data.query, parsedBody.data.limit);
   } catch (error: unknown) {
     const message = getErrorMessage(error);
     console.error('Semantic search POST error:', message);
@@ -70,7 +73,7 @@ async function handleSearch(query: string, safeLimit: number) {
   });
 
   // Convert vector array to string representation for pgvector parameter casting
-  const vectorString = `[${embedding.join(',')}]`;
+  const vectorString = serializeVector(embedding);
 
   // Perform vector similarity search using raw SQL pgvector '<=>' (cosine distance operator)
   // By doing '1 - distance' we get the cosine similarity

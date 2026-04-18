@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '../../../lib/db';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const linkBodySchema = z.object({
   sourceItemId: z.string().trim().min(1, 'sourceItemId is required'),
@@ -21,17 +22,12 @@ const deleteLinkQuerySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = linkBodySchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: parsed.error.flatten() },
-        { status: 400 },
-      );
+    const parsedBody = await parseJsonBody(req, linkBodySchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { sourceItemId, targetItemId, description } = parsed.data;
+    const { sourceItemId, targetItemId, description } = parsedBody.data;
 
     const payload = {
       sourceItemId,

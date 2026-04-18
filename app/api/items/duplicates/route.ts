@@ -4,23 +4,42 @@ import {
   buildDuplicateClusters,
   type DuplicateComparableItem,
 } from '@/app/lib/duplicate-clustering';
+import { z } from 'zod';
 
 const DEFAULT_LIMIT = 120;
 const MAX_LIMIT = 250;
 
-function parsePositiveInt(value: string | null, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
+const duplicatesQuerySchema = z.object({
+  limit: z.preprocess(
+    (value) => {
+      if (value === null || value === undefined || value === '') {
+        return undefined;
+      }
 
-  return Math.floor(parsed);
-}
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : Number.NaN;
+    },
+    z.number()
+      .positive()
+      .default(DEFAULT_LIMIT)
+      .transform((value) => Math.min(Math.floor(value), MAX_LIMIT))
+  ),
+});
 
 export async function GET(req: NextRequest) {
   try {
-    const requestedLimit = parsePositiveInt(req.nextUrl.searchParams.get('limit'), DEFAULT_LIMIT);
-    const limit = Math.min(requestedLimit, MAX_LIMIT);
+    const parseResult = duplicatesQuerySchema.safeParse({
+      limit: req.nextUrl.searchParams.get('limit'),
+    });
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { limit } = parseResult.data;
 
     const { data: rows, error } = await db
       .from('Item')

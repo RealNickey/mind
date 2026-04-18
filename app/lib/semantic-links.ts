@@ -8,9 +8,15 @@ import {
 } from './duplicate-clustering';
 import { normalizeSourceUrl } from './url-utils';
 import type { Database } from './database.types';
+import { parseVector, serializeVector } from './vector-codec';
 
 type ItemRow = Database['public']['Tables']['Item']['Row'];
 type EmbeddingRow = Database['public']['Tables']['Embedding']['Row'];
+type ItemLinkInsert = Database['public']['Tables']['ItemLink']['Insert'];
+type ItemLinkPairRow = Pick<
+  Database['public']['Tables']['ItemLink']['Row'],
+  'sourceItemId' | 'targetItemId'
+>;
 type ComparableItemRow = Pick<
   ItemRow,
   'id' | 'title' | 'type' | 'description' | 'content' | 'sourceUrl'
@@ -117,28 +123,6 @@ async function generateEmbeddingWithFallback(
   }
 }
 
-function parseVectorString(raw: string | null | undefined): number[] | null {
-  if (typeof raw !== 'string') {
-    return null;
-  }
-
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
-    return null;
-  }
-
-  const entries = trimmed
-    .slice(1, -1)
-    .split(',')
-    .map((entry) => Number(entry.trim()));
-
-  if (entries.length === 0 || entries.some((entry) => !Number.isFinite(entry))) {
-    return null;
-  }
-
-  return entries;
-}
-
 function inferEmbeddingSource(modelVersion: string | null | undefined): 'local' | 'groq' {
   if (typeof modelVersion !== 'string') {
     return 'local';
@@ -161,7 +145,7 @@ async function getOrCreateEmbeddingVector(
   }
 
   if (embeddingRow) {
-    const parsed = parseVectorString((embeddingRow as Pick<EmbeddingRow, 'vector'>).vector);
+    const parsed = parseVector((embeddingRow as Pick<EmbeddingRow, 'vector'>).vector);
     if (parsed && parsed.length > 0) {
       return {
         source: inferEmbeddingSource((embeddingRow as Pick<EmbeddingRow, 'modelVersion'>).modelVersion),
@@ -173,7 +157,7 @@ async function getOrCreateEmbeddingVector(
 
   const embeddingText = buildEmbeddingText(item);
   const generated = await generateEmbeddingWithFallback(embeddingText);
-  const vector = `[${generated.embedding.join(',')}]`;
+  const vector = serializeVector(generated.embedding);
 
   const { error: upsertError } = await db
     .from('Embedding')
@@ -288,34 +272,50 @@ function buildSemanticReasons(
   return reasons;
 }
 
-async function hasExistingLinkBetween(sourceItemId: string, targetItemId: string): Promise<boolean> {
-  const { data: existingForward, error: forwardError } = await db
-    .from('ItemLink')
-    .select('id')
-    .eq('sourceItemId', sourceItemId)
-    .eq('targetItemId', targetItemId)
-    .maybeSingle();
+function getUndirectedLinkKey(sourceItemId: string, targetItemId: string): string {
+  return sourceItemId < targetItemId
+    ? `${sourceItemId}::${targetItemId}`
+    : `${targetItemId}::${sourceItemId}`;
+}
 
-  if (forwardError) {
-    throw forwardError;
+async function getExistingLinkKeysForCandidates(
+  sourceItemId: string,
+  candidateIds: readonly string[]
+): Promise<Set<string>> {
+  const normalizedCandidateIds = [...new Set(candidateIds)].filter((candidateId) => candidateId !== sourceItemId);
+  if (normalizedCandidateIds.length === 0) {
+    return new Set();
   }
 
-  if (existingForward?.id) {
-    return true;
+  const [forwardResult, reverseResult] = await Promise.all([
+    db
+      .from('ItemLink')
+      .select('sourceItemId, targetItemId')
+      .eq('sourceItemId', sourceItemId)
+      .in('targetItemId', normalizedCandidateIds),
+    db
+      .from('ItemLink')
+      .select('sourceItemId, targetItemId')
+      .eq('targetItemId', sourceItemId)
+      .in('sourceItemId', normalizedCandidateIds),
+  ]);
+
+  if (forwardResult.error) {
+    throw forwardResult.error;
   }
 
-  const { data: existingReverse, error: reverseError } = await db
-    .from('ItemLink')
-    .select('id')
-    .eq('sourceItemId', targetItemId)
-    .eq('targetItemId', sourceItemId)
-    .maybeSingle();
-
-  if (reverseError) {
-    throw reverseError;
+  if (reverseResult.error) {
+    throw reverseResult.error;
   }
 
-  return Boolean(existingReverse?.id);
+  const existingLinkKeys = new Set<string>();
+  const existingPairs = [...(forwardResult.data ?? []), ...(reverseResult.data ?? [])] as ItemLinkPairRow[];
+
+  for (const pair of existingPairs) {
+    existingLinkKeys.add(getUndirectedLinkKey(pair.sourceItemId, pair.targetItemId));
+  }
+
+  return existingLinkKeys;
 }
 
 export async function getSemanticAndDuplicateSuggestions(
@@ -358,7 +358,7 @@ export async function getSemanticAndDuplicateSuggestions(
     embeddingSource = embeddingInfo.source;
     embeddingReused = embeddingInfo.reused;
 
-    const vector = `[${embeddingInfo.embedding.join(',')}]`;
+    const vector = serializeVector(embeddingInfo.embedding);
     const { data: rawMatches, error: rpcError } = await db.rpc('match_items', {
       query_embedding: vector,
       match_threshold: SEMANTIC_RPC_THRESHOLD,
@@ -615,28 +615,40 @@ export async function autoCreateSemanticLinks(itemId: string): Promise<number> {
     .sort((a, b) => b.rankScore - a.rankScore)
     .slice(0, AUTO_LINK_MAX_LINKS);
 
-  let created = 0;
+  const existingLinkKeys = await getExistingLinkKeysForCandidates(
+    itemId,
+    strongSemanticLinks.map((suggestion) => suggestion.itemId)
+  );
+
+  const queuedLinkKeys = new Set<string>();
+  const linksToInsert: ItemLinkInsert[] = [];
+
   for (const suggestion of strongSemanticLinks) {
-    if (await hasExistingLinkBetween(itemId, suggestion.itemId)) {
+    const linkKey = getUndirectedLinkKey(itemId, suggestion.itemId);
+    if (existingLinkKeys.has(linkKey) || queuedLinkKeys.has(linkKey)) {
       continue;
     }
 
+    queuedLinkKeys.add(linkKey);
     const topReason = suggestion.reasons[0] ?? 'high semantic similarity';
 
-    const { error: insertError } = await db.from('ItemLink').insert({
+    linksToInsert.push({
       sourceItemId: itemId,
       targetItemId: suggestion.itemId,
       linkType: 'semantic',
       strength: clamp01(suggestion.similarity),
       description: `Auto-linked by semantic suggestion engine (${topReason})`,
     });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    created += 1;
   }
 
-  return created;
+  if (linksToInsert.length === 0) {
+    return 0;
+  }
+
+  const { error: insertError } = await db.from('ItemLink').insert(linksToInsert);
+  if (insertError) {
+    throw new Error(`Failed to batch insert semantic links: ${insertError.message}`);
+  }
+
+  return linksToInsert.length;
 }

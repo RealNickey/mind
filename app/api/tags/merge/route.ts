@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { z } from 'zod';
+import { parseJsonBody } from '@/app/api/_validation';
 
 const mergeTagsSchema = z.object({
   sourceTagId: z.string().trim().min(1, "sourceTagId is required"),
@@ -13,17 +14,12 @@ const mergeTagsSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parseResult = mergeTagsSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+    const parsedBody = await parseJsonBody(req, mergeTagsSchema);
+    if (!parsedBody.success) {
+      return parsedBody.response;
     }
 
-    const { sourceTagId, targetTagId, keepSourceTag } = parseResult.data;
+    const { sourceTagId, targetTagId, keepSourceTag } = parsedBody.data;
 
     const { data: sourceTag, error: sourceTagError } = await db
       .from('Tag')

@@ -139,33 +139,35 @@ export function ReadingModeTTS({ text, title }: ReadingModeTTSProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <button
         type="button"
         onClick={isSpeaking ? togglePause : () => void startSpeaking()}
         disabled={!isReady}
-        className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="group inline-flex items-center gap-2 rounded-xl bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 disabled:opacity-30 shadow-md ring-1 ring-black/5 dark:ring-white/5"
         title={title ? `Read \"${title}\" aloud` : 'Read aloud'}
       >
-        {isSpeaking && !isPaused ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-        {isSpeaking && !isPaused ? 'Pause' : isPaused ? 'Resume' : 'Listen'}
+        {isSpeaking && !isPaused ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+        <span>{isSpeaking && !isPaused ? 'Pause' : isPaused ? 'Resume' : 'Listen'}</span>
       </button>
 
       <button
         type="button"
         onClick={stopSpeaking}
         disabled={!isSpeaking}
-        className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        className="group inline-flex items-center gap-2 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/50 dark:bg-zinc-900/50 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 shadow-sm"
         title="Stop reading"
       >
-        <Square className="h-3.5 w-3.5" />
-        Stop
+        <Square className="h-3 w-3 fill-current" />
+        <span>Stop</span>
       </button>
 
-      <span className="inline-flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-        <Volume2 className="h-3.5 w-3.5" />
-        {error ? 'Unavailable' : isSpeaking ? (isPaused ? 'Paused' : 'Reading') : 'Ready'}
-      </span>
+      <div className="flex items-center gap-2 ml-auto">
+        <div className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? (isPaused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse') : 'bg-zinc-300'}`} />
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+          {error ? 'Error' : isSpeaking ? (isPaused ? 'Paused' : 'Reading') : 'Ready'}
+        </span>
+      </div>
     </div>
   );
 }

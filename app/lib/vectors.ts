@@ -2,6 +2,7 @@ import { db } from './db';
 import { embed } from 'ai';
 import { cohere } from '@ai-sdk/cohere';
 import type { Database } from './database.types';
+import { serializeVector } from './vector-codec';
 
 const MODEL_VERSION = 'cohere/embed-english-v3.0';
 type MatchItemRow = Database['public']['Functions']['match_items']['Returns'][number];
@@ -15,7 +16,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 export async function storeEmbedding(itemId: string, vector: number[]) {
-  const vectorStr = `[${vector.join(',')}]`;
+  const vectorStr = serializeVector(vector);
   const { error } = await db.from('Embedding').insert({
     id: crypto.randomUUID(),
     itemId,
@@ -27,7 +28,7 @@ export async function storeEmbedding(itemId: string, vector: number[]) {
 }
 
 export async function searchSimilar(queryVector: number[], threshold = 0.7, limit = 10) {
-  const vectorStr = `[${queryVector.join(',')}]`;
+  const vectorStr = serializeVector(queryVector);
   
   const { data: matchData, error: rpcErr } = await db.rpc('match_items', {
     query_embedding: vectorStr,

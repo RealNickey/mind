@@ -1,13 +1,9 @@
 import React from 'react';
+import { getDisplayDomain } from '@/app/lib/url-utils';
 import PreviewImage from './PreviewImage';
 
 export default function LinkPreview({ url, title, description, favicon }: { url: string, title?: string, description?: string, favicon?: string }) {
-  let hostname = '';
-  try {
-    hostname = new URL(url).hostname.replace('www.', '');
-  } catch {
-    hostname = url;
-  }
+  const hostname = getDisplayDomain(url, url) ?? url;
   
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex flex-col gap-2 cursor-pointer group">

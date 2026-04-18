@@ -9,6 +9,8 @@ import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot 
 import InfiniteCanvas from "./InfiniteCanvas";
 import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
+import { fetchSemanticSearch } from "@/app/lib/semantic-search";
+import { createItem, deleteItem, listItems, type CreateItemPayload } from "@/app/lib/api-client/items";
 
 type Item = ItemCardItem;
 type ItemPages = InfiniteData<Item[], number>;
@@ -80,32 +82,30 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading
+    isLoading,
+    isError,
+    error: itemsQueryError,
   } = useInfiniteQuery({
     queryKey: ['items', activeFilter, debouncedSearch, searchMode],
     initialPageParam: 0,
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam = 0, signal }) => {
       if (searchMode === "semantic" && debouncedSearch) {
-        const semanticResponse = await fetch("/api/search/semantic", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: debouncedSearch, limit: pageSize }),
+        const payload = await fetchSemanticSearch<Item>({
+          query: debouncedSearch,
+          limit: pageSize,
+          signal,
         });
-        if (!semanticResponse.ok) throw new Error("Failed to load semantic results");
-        const payload = await semanticResponse.json() as { results?: Item[] };
-        return Array.isArray(payload.results) ? payload.results : [];
+
+        return payload.results;
       }
 
-      const params = new URLSearchParams({
-        limit: String(pageSize),
-        offset: String(pageParam),
+      return listItems({
+        limit: pageSize,
+        offset: Number(pageParam),
+        type: activeFilter !== "all" ? activeFilter : undefined,
+        q: debouncedSearch || undefined,
+        signal,
       });
-      if (activeFilter !== "all") params.set("type", activeFilter);
-      if (debouncedSearch) params.set("q", debouncedSearch);
-
-      const res = await fetch(`/api/items/list?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to load items");
-      return res.json() as Promise<Item[]>;
     },
     getNextPageParam: (lastPage, allPages) => {
       if (searchMode === "semantic" || lastPage.length < pageSize) return undefined;
@@ -122,24 +122,26 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     },
   });
 
+  const itemsErrorMessage = isError
+    ? itemsQueryError instanceof Error
+      ? itemsQueryError.message
+      : "Failed to load items."
+    : null;
+  const displayError = error ?? itemsErrorMessage;
+
   const items = dedupeById(data?.pages.flat() || []);
 
   const addPastedItemMutation = useMutation({
     mutationFn: async (trimmed: string) => {
       const isUrl = /^https?:\/\//i.test(trimmed);
-      const res = await fetch('/api/items/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: isUrl ? trimmed : trimmed.slice(0, 80),
-          description: isUrl ? undefined : trimmed.slice(0, 280),
-          content: isUrl ? undefined : trimmed,
-          type: isUrl ? undefined : 'note',
-          sourceUrl: isUrl ? trimmed : undefined,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to save pasted content');
-      return res.json() as Promise<Item>;
+      const payload: CreateItemPayload = {
+        title: isUrl ? trimmed : trimmed.slice(0, 80),
+        description: isUrl ? undefined : trimmed.slice(0, 280),
+        content: isUrl ? undefined : trimmed,
+        type: isUrl ? undefined : 'note',
+        sourceUrl: isUrl ? trimmed : undefined,
+      };
+      return createItem(payload);
     },
     onSuccess: (newItem) => {
       queryClient.setQueryData<ItemPages>(['items', activeFilter, debouncedSearch, searchMode], (old) => {
@@ -191,8 +193,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete item');
+      await deleteItem(id);
     },
     onSuccess: (_, id) => {
       queryClient.setQueryData<ItemPages>(['items', activeFilter, debouncedSearch, searchMode], (old) => {
@@ -223,105 +224,106 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top Header / Filter Bar */}
-      <div className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-6 py-4 flex items-center justify-between gap-4">
-        
-        <div 
-          className="flex items-center gap-2 overflow-x-auto pb-1 max-w-[50%] scrollbar-hide"
-          role="tablist"
-          aria-label="Filter items by type"
-        >
-          {FILTER_TYPES.map((type) => (
-            <button
-              key={type}
-              role="tab"
-              aria-selected={activeFilter === type}
-              onClick={() => setActiveFilter(type)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                activeFilter === type
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-              }`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 flex justify-end gap-2">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-            <input
-              type="text"
-              placeholder={searchMode === "semantic" ? "Semantic search in your mind..." : "Search in grid..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-full border border-zinc-200 bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              aria-label="Search items"
-            />
-            {(isLoading || isFetchingNextPage) && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={14} />
-            )}
+      <div className="sticky top-4 z-40 mx-auto w-[calc(100%-2rem)] max-w-7xl">
+        <div className="bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl border border-white/20 dark:border-zinc-800/20 px-6 py-3 flex items-center justify-between gap-6 rounded-2xl shadow-xl shadow-black/5 dark:shadow-white/5 ring-1 ring-black/5 dark:ring-white/5">
+          
+          <div 
+            className="flex items-center gap-3 overflow-x-auto pb-1 max-w-[40%] scrollbar-hide mask-fade-right"
+            role="tablist"
+            aria-label="Filter items by type"
+          >
+            {FILTER_TYPES.map((type) => (
+              <button
+                key={type}
+                role="tab"
+                aria-selected={activeFilter === type}
+                onClick={() => setActiveFilter(type)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                  activeFilter === type
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+              >
+                {type}
+              </button>
+            ))}
           </div>
-          <button
-            className={`px-3 py-2 rounded-full border text-xs font-semibold uppercase tracking-wide transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              searchMode === "semantic"
-                ? "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-500/50 dark:bg-blue-900/30 dark:text-blue-200"
-                : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            }`}
-            onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
-            aria-label="Toggle semantic search"
-            title="Toggle semantic search"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Sparkles size={14} aria-hidden="true" />
-              {searchMode === "semantic" ? "Semantic" : "Keyword"}
-            </span>
-          </button>
-          <button
-            className={`p-2 rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              showAssistant
-                ? "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600/60 dark:bg-emerald-900/30 dark:text-emerald-300"
-                : "border-zinc-200 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-            onClick={() => setShowAssistant((prev) => !prev)}
-            aria-label="Toggle AI assistant"
-            title="Toggle AI assistant"
-          >
-            <Bot size={18} aria-hidden="true" />
-          </button>
-          <button 
-            className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Filter items"
-          >
-            <Filter size={18} aria-hidden="true" />
-          </button>
-          <button 
-            className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Tags"
-          >
-            <Tags size={18} aria-hidden="true" />
-          </button>
-          <button 
-            className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Calendar view"
-          >
-            <Calendar size={18} aria-hidden="true" />
-          </button>
-          <button 
-            className={`p-2 rounded-full border border-zinc-200 dark:border-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              viewMode === 'canvas' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            }`}
-            onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
-            aria-label="Toggle Canvas View"
-            title="Toggle Canvas View"
-          >
-            <LayoutTemplate size={18} aria-hidden="true" />
-          </button>
+
+          <div className="flex-1 flex justify-end gap-3 items-center">
+            <div className="relative w-full max-w-sm group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-zinc-100 transition-colors" size={14} />
+              <input
+                type="text"
+                placeholder={searchMode === "semantic" ? "Semantic search..." : "Search..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border-none bg-zinc-100/50 dark:bg-zinc-800/50 focus:outline-none focus:ring-1 focus:ring-zinc-400/50 text-xs font-medium placeholder:text-zinc-400"
+                aria-label="Search items"
+              />
+              {(isLoading || isFetchingNextPage) && (
+                <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={12} />
+              )}
+            </div>
+            
+            <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+
+            <div className="flex items-center gap-1.5 bg-zinc-100/30 dark:bg-zinc-800/30 p-1 rounded-xl">
+              <button
+                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                  searchMode === "semantic"
+                    ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+                onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
+                aria-label="Toggle semantic search"
+                title="Toggle semantic search"
+              >
+                <Sparkles size={16} aria-hidden="true" />
+              </button>
+              <button
+                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                  showAssistant
+                    ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-700 dark:text-emerald-400"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+                onClick={() => setShowAssistant((prev) => !prev)}
+                aria-label="Toggle AI assistant"
+                title="Toggle AI assistant"
+              >
+                <Bot size={16} aria-hidden="true" />
+              </button>
+              <button 
+                className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                  viewMode === 'canvas' ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-700 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                }`}
+                onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
+                aria-label="Toggle Canvas View"
+                title="Toggle Canvas View"
+              >
+                <LayoutTemplate size={16} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button 
+                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                aria-label="Filter items"
+              >
+                <Filter size={16} aria-hidden="true" />
+              </button>
+              <button 
+                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                aria-label="Tags"
+              >
+                <Tags size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Grid Content */}
-      <div className={viewMode === 'canvas' ? "flex-1 overflow-hidden" : "flex-1 p-6"} role="region" aria-label={viewMode === 'canvas' ? "Canvas Area" : "Items Grid"}>
+      <div className={viewMode === 'canvas' ? "flex-1 overflow-hidden" : "flex-1 p-6 pt-12"} role="region" aria-label={viewMode === 'canvas' ? "Canvas Area" : "Items Grid"}>
         {viewMode === 'canvas' ? (
           <InfiniteCanvas
             items={items}
@@ -333,9 +335,9 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
           />
         ) : (
           <>
-            {error && (
+            {displayError && (
               <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-                {error}
+                {displayError}
               </div>
             )}
 
