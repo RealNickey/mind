@@ -2,6 +2,40 @@ import { unfurl } from 'unfurl.js';
 import { detectContentType, ContentType } from './content-detection';
 import { normalizeSourceUrl } from './url-utils';
 
+type UnfurlResult = Awaited<ReturnType<typeof unfurl>>;
+
+type OpenGraphArticle = {
+  author?: string;
+  published_time?: string;
+};
+
+type OEmbedData = {
+  author_name?: string;
+};
+
+function getOpenGraphArticle(result: UnfurlResult): OpenGraphArticle | null {
+  const openGraphData = result.open_graph as unknown;
+  if (!openGraphData || typeof openGraphData !== 'object' || Array.isArray(openGraphData)) {
+    return null;
+  }
+
+  const articleData = (openGraphData as { article?: unknown }).article;
+  if (!articleData || typeof articleData !== 'object' || Array.isArray(articleData)) {
+    return null;
+  }
+
+  return articleData as OpenGraphArticle;
+}
+
+function getOEmbedData(result: UnfurlResult): OEmbedData | null {
+  const oEmbedData = result.oEmbed as unknown;
+  if (!oEmbedData || typeof oEmbedData !== 'object' || Array.isArray(oEmbedData)) {
+    return null;
+  }
+
+  return oEmbedData as OEmbedData;
+}
+
 export interface ExtractedMetadata {
   title: string | null;
   description: string | null;
@@ -11,7 +45,7 @@ export interface ExtractedMetadata {
   publishedDate: string | null;
   contentType: ContentType;
   sourceUrl: string;
-  raw: any; // The raw unfurl data for debugging/advanced usage
+  raw: unknown; // The raw unfurl data for debugging/advanced usage
 }
 
 /**
@@ -26,6 +60,9 @@ export async function extractUrlMetadata(url: string): Promise<ExtractedMetadata
       follow: 5,
       oembed: true,
     });
+
+    const openGraphArticle = getOpenGraphArticle(result);
+    const oEmbedData = getOEmbedData(result);
 
     // Extract title
     const title =
@@ -52,14 +89,14 @@ export async function extractUrlMetadata(url: string): Promise<ExtractedMetadata
 
     // Extract author
     const author =
-      (result.open_graph as any)?.article?.author ||
+      openGraphArticle?.author ||
       result.twitter_card?.creator ||
-      (result.oEmbed as any)?.author_name ||
+      oEmbedData?.author_name ||
       null;
 
     // Extract published date
     const publishedDate =
-      (result.open_graph as any)?.article?.published_time || null;
+      openGraphArticle?.published_time || null;
 
     // Determine the content type based on URL and extracted metadata
     const contentType = detectContentType(normalizedUrl, result);

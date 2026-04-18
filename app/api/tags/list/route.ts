@@ -8,7 +8,7 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json(tags);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('List tags error:', error);
     return NextResponse.json({ error: 'Failed to fetch tags' }, { status: 500 });
   }

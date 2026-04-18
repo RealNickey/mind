@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { AlertTriangle, GitMerge, RefreshCw, Sparkles } from 'lucide-react';
 
@@ -66,47 +67,19 @@ function getStatusStyles(status: LinkHealthStatus): string {
 }
 
 export function ItemInsightsPanel({ itemId, sourceUrl, initialLinkHealth = null }: ItemInsightsPanelProps) {
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
-  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<SuggestionsPayload | null>(null);
-
   const [linkHealth, setLinkHealth] = useState<LinkHealthSnapshot | null>(initialLinkHealth);
   const [isRefreshingHealth, setIsRefreshingHealth] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const { data: suggestions, isLoading: isLoadingSuggestions, error: rawError } = useQuery<SuggestionsPayload>({
+    queryKey: ['suggestions', itemId],
+    queryFn: async () => {
+      const response = await fetch(`/api/items/${itemId}/suggestions`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to load insights');
+      return response.json();
+    },
+  });
 
-    const loadSuggestions = async () => {
-      setIsLoadingSuggestions(true);
-      setSuggestionsError(null);
-
-      try {
-        const response = await fetch(`/api/items/${itemId}/suggestions`, { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error('Failed to load insights');
-        }
-
-        const payload = await response.json() as SuggestionsPayload;
-        if (active) {
-          setSuggestions(payload);
-        }
-      } catch (error) {
-        if (active) {
-          setSuggestionsError(error instanceof Error ? error.message : 'Failed to load insights');
-        }
-      } finally {
-        if (active) {
-          setIsLoadingSuggestions(false);
-        }
-      }
-    };
-
-    void loadSuggestions();
-
-    return () => {
-      active = false;
-    };
-  }, [itemId]);
+  const suggestionsError = rawError instanceof Error ? rawError.message : null;
 
   const refreshLinkHealth = async () => {
     if (!sourceUrl) {

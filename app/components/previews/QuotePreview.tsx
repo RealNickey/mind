@@ -4,7 +4,7 @@ export default function QuotePreview({ text, author, source }: { text: string, a
   return (
     <div className="p-6 bg-gradient-to-br from-[#f8f9fa] to-white rounded-xl shadow-sm border border-gray-100 flex flex-col relative font-playfair">
       <div className="absolute top-2 left-2 text-[#e2e8f0] text-6xl leading-none font-serif opacity-50 select-none">
-        "
+        &ldquo;
       </div>
       
       <blockquote className="text-xl md:text-2xl text-gray-800 font-medium leading-relaxed z-10 pt-4 pl-2 italic">

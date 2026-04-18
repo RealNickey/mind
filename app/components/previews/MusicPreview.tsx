@@ -1,4 +1,5 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function MusicPreview({ title, artist, album, cover, year }: { title: string, artist: string, album?: string, cover: string, year?: string }) {
   return (
@@ -18,7 +19,13 @@ export default function MusicPreview({ title, artist, album, cover, year }: { ti
         
         {/* Album Cover */}
         <div className="absolute inset-0 shadow-[-5px_0_15px_rgba(0,0,0,0.5)] rounded-sm overflow-hidden z-20 border border-white/10 bg-black">
-          <img src={cover} alt={title} className="w-full h-full object-cover" />
+          <PreviewImage
+            src={cover}
+            alt={title}
+            fill
+            sizes="(max-width: 768px) 112px, 144px"
+            className="w-full h-full object-cover"
+          />
           {/* Cover gloss */}
           <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           

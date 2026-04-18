@@ -4,10 +4,26 @@ import { enrichMetadataWithLLM } from '@/app/lib/openai-metadata';
 import { normalizeSourceUrl } from '@/app/lib/url-utils';
 import { checkLinkHealth } from '@/app/lib/link-health';
 import { captureArchiveSnapshot } from '@/app/lib/archive';
+import { z } from 'zod';
+
+const fetchMetadataSchema = z.object({
+  url: z.string().trim().min(1, 'URL is required'),
+  skipEnrichment: z.boolean().optional().default(false),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { url, skipEnrichment } = await req.json();
+    const body = await req.json();
+    const parsed = fetchMetadataSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid payload', details: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+
+    const { url, skipEnrichment } = parsed.data;
 
     const normalizedUrl = normalizeSourceUrl(url);
     if (!normalizedUrl) {
@@ -45,7 +61,7 @@ export async function POST(req: NextRequest) {
       linkHealth,
       archiveSnapshot,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching metadata:', error);
     return NextResponse.json({ error: 'Failed to extract metadata' }, { status: 500 });
   }

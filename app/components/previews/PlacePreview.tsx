@@ -1,10 +1,17 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function PlacePreview({ name, address, rating, categories, staticMapUrl, mapLink }: { name: string, address: string, rating?: number, categories?: string[], staticMapUrl: string, mapLink?: string }) {
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 group relative">
       <div className="h-32 w-full bg-gray-100 relative">
-        <img src={staticMapUrl} alt={`Map showing ${name}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
+        <PreviewImage
+          src={staticMapUrl}
+          alt={`Map showing ${name}`}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+        />
         
         {/* Map pin marker */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-md">

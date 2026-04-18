@@ -1,4 +1,3 @@
-// @ts-ignore
 import { Vibrant } from 'node-vibrant/node';
 
 export interface ColorData {

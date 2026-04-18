@@ -1,10 +1,11 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function LinkPreview({ url, title, description, favicon }: { url: string, title?: string, description?: string, favicon?: string }) {
   let hostname = '';
   try {
     hostname = new URL(url).hostname.replace('www.', '');
-  } catch (e) {
+  } catch {
     hostname = url;
   }
   
@@ -12,7 +13,7 @@ export default function LinkPreview({ url, title, description, favicon }: { url:
     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex flex-col gap-2 cursor-pointer group">
       <div className="flex items-center gap-2">
         {favicon ? (
-          <img src={favicon} alt="" className="w-4 h-4 rounded-sm" />
+          <PreviewImage src={favicon} alt="" width={16} height={16} className="w-4 h-4 rounded-sm" />
         ) : (
           <div className="w-4 h-4 bg-gray-200 rounded-sm flex items-center justify-center">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="gray" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>

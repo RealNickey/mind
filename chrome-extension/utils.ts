@@ -8,8 +8,14 @@ export interface ExtractedData {
   content?: string;
 }
 
+interface ReadabilityParseResult {
+  title?: string | null;
+  excerpt?: string | null;
+  content?: string | null;
+}
+
 export function extractMetadata(): ExtractedData {
-  let article: any = null;
+  let article: ReadabilityParseResult | null = null;
   try {
     const documentClone = document.cloneNode(true) as Document;
     const reader = new Readability(documentClone);
@@ -47,7 +53,7 @@ export function extractMetadata(): ExtractedData {
   return { title, url, description, image, content };
 }
 
-export async function sendToApp(data: any, token: string): Promise<Response> {
+export async function sendToApp(data: Record<string, unknown>, token: string): Promise<Response> {
   const API_URL = 'http://localhost:3000/api/items/create';
   
   return fetch(API_URL, {

@@ -1,4 +1,5 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function MoviePreview({ title, poster, backdrop, rating, year, runtime, genres }: { title: string, poster: string, backdrop?: string, rating: number, year: string, runtime?: number, genres?: string[] }) {
   return (
@@ -13,7 +14,13 @@ export default function MoviePreview({ title, poster, backdrop, rating, year, ru
       <div className="relative flex-1 mx-4 my-2 overflow-hidden rounded-md shadow-[0_0_20px_rgba(0,0,0,0.8)] bg-black border border-white/5">
         {backdrop && (
           <div className="absolute inset-0 opacity-50 mix-blend-overlay">
-            <img src={backdrop} alt="" className="h-full w-full object-cover blur-[2px] scale-105 group-hover:scale-110 transition-transform duration-1000" />
+            <PreviewImage
+              src={backdrop}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="h-full w-full object-cover blur-[2px] scale-105 group-hover:scale-110 transition-transform duration-1000"
+            />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
@@ -22,7 +29,7 @@ export default function MoviePreview({ title, poster, backdrop, rating, year, ru
           <div className="flex gap-4 items-end">
             {poster && (
               <div className="relative w-24 rounded-md shadow-[0_10px_20px_rgba(0,0,0,0.8)] border border-white/20 group-hover:-translate-y-2 transition-transform duration-500 overflow-hidden shrink-0">
-                <img src={poster} alt={title} className="w-full h-auto object-cover" />
+                <PreviewImage src={poster} alt={title} width={300} height={450} sizes="96px" className="w-full h-auto object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
               </div>
             )}

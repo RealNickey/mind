@@ -1,4 +1,5 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function InstagramPreview({ author, avatar, imageUrl, caption, likes }: { author: string, avatar: string, imageUrl: string, caption?: string, likes?: number }) {
   return (
@@ -6,7 +7,7 @@ export default function InstagramPreview({ author, avatar, imageUrl, caption, li
       {/* Header */}
       <div className="flex items-center p-3 gap-3 bg-white">
         <div className="p-0.5 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500">
-          <img src={avatar} alt={author} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
+          <PreviewImage src={avatar} alt={author} width={32} height={32} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
         </div>
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900 text-[13px] leading-tight flex items-center gap-1">
@@ -22,7 +23,14 @@ export default function InstagramPreview({ author, avatar, imageUrl, caption, li
       
       {/* Image */}
       <div className="w-full bg-gray-100 border-y border-gray-100">
-        <img src={imageUrl} alt={caption || 'Instagram Post'} className="w-full h-auto object-cover max-h-[500px]" />
+        <PreviewImage
+          src={imageUrl}
+          alt={caption || 'Instagram Post'}
+          width={1200}
+          height={1200}
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="w-full h-auto object-cover max-h-[500px]"
+        />
       </div>
       
       {/* Actions */}

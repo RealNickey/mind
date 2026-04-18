@@ -1,25 +1,17 @@
 import { db } from './db';
-import { pipeline } from '@xenova/transformers';
+import { embed } from 'ai';
+import { cohere } from '@ai-sdk/cohere';
+import type { Database } from './database.types';
 
-const MODEL_VERSION = 'Xenova/all-MiniLM-L6-v2';
-
-class Predictor {
-  static task = 'feature-extraction';
-  static model = MODEL_VERSION;
-  static instance: any = null;
-
-  static async getInstance(progress_callback?: Function) {
-    if (this.instance === null) {
-      this.instance = await pipeline(this.task as any, this.model, { progress_callback });
-    }
-    return this.instance;
-  }
-}
+const MODEL_VERSION = 'cohere/embed-english-v3.0';
+type MatchItemRow = Database['public']['Functions']['match_items']['Returns'][number];
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const extractor = await Predictor.getInstance();
-  const output = await extractor(text, { pooling: 'mean', normalize: true });
-  return Array.from(output.data);
+  const { embedding } = await embed({
+    model: cohere.embedding('embed-english-v3.0'),
+    value: text,
+  });
+  return embedding;
 }
 
 export async function storeEmbedding(itemId: string, vector: number[]) {
@@ -29,7 +21,7 @@ export async function storeEmbedding(itemId: string, vector: number[]) {
     itemId,
     vector: vectorStr,
     embedding: vectorStr,
-    modelVersion: 'Xenova/all-MiniLM-L6-v2'
+    modelVersion: MODEL_VERSION
   });
   if (error) throw error;
 }
@@ -47,7 +39,7 @@ export async function searchSimilar(queryVector: number[], threshold = 0.7, limi
   
   // match_items returns id, similarity but id is actually itemId in our schema SQL function
   // Look at setup-db.sql: "itemId" as id
-  return (matchData || []).map((row: any) => ({
+  return (matchData || []).map((row: MatchItemRow) => ({
     itemId: row.id,
     similarity: row.similarity
   }));

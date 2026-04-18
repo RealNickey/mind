@@ -22,7 +22,31 @@ export type ContentType =
   | 'place'
   | 'unknown';
 
-export function detectContentType(url: string, metadata: any): ContentType {
+type SchemaOrgNode = {
+  '@type'?: string | string[];
+};
+
+type DetectionMetadata = {
+  open_graph?: {
+    type?: string;
+  };
+  schema_org?: SchemaOrgNode[];
+} | null;
+
+function hasSchemaType(node: SchemaOrgNode, expectedType: string): boolean {
+  const schemaType = node['@type'];
+  if (typeof schemaType === 'string') {
+    return schemaType === expectedType;
+  }
+
+  if (Array.isArray(schemaType)) {
+    return schemaType.includes(expectedType);
+  }
+
+  return false;
+}
+
+export function detectContentType(url: string, metadata: DetectionMetadata): ContentType {
   try {
     const parsedUrl = new URL(url);
     const pathname = parsedUrl.pathname.toLowerCase();
@@ -85,15 +109,15 @@ export function detectContentType(url: string, metadata: any): ContentType {
     }
 
     // Fallbacks based on metadata patterns
-    if (metadata?.schema_org?.some((schema: any) => schema['@type'] === 'Recipe')) {
+    if (metadata?.schema_org?.some((schema) => hasSchemaType(schema, 'Recipe'))) {
       return 'recipe';
     }
-    if (metadata?.schema_org?.some((schema: any) => schema['@type'] === 'Product')) {
+    if (metadata?.schema_org?.some((schema) => hasSchemaType(schema, 'Product'))) {
       return 'product';
     }
 
     return 'link';
-  } catch (error) {
+  } catch {
     // If URL parsing fails, might be direct text/note content
     if (url.startsWith('#') || url.includes('rgb') || url.includes('hsl')) return 'color';
     return 'note';

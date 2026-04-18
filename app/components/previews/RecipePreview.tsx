@@ -1,4 +1,5 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function RecipePreview({ title, ingredients, prepTime, cookTime, servings, imageUrl }: { title: string, ingredients: string[], prepTime: number, cookTime: number, servings: number, imageUrl?: string }) {
   const totalTime = prepTime + cookTime;
@@ -6,8 +7,8 @@ export default function RecipePreview({ title, ingredients, prepTime, cookTime, 
   return (
     <div className="bg-[#FFF8DC] rounded-xl overflow-hidden shadow-sm border border-[#F5DEB3] flex flex-col font-inter">
       {imageUrl && (
-        <div className="h-40 w-full overflow-hidden">
-          <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+        <div className="relative h-40 w-full overflow-hidden">
+          <PreviewImage src={imageUrl} alt={title} fill sizes="(max-width: 768px) 100vw, 40vw" className="w-full h-full object-cover" />
         </div>
       )}
       

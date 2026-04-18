@@ -38,7 +38,7 @@ function extractTitle(html: string): string | null {
     if (!title) return null;
     const cleaned = title.replace(/\s+/g, ' ').trim();
     return cleaned.length > 0 ? cleaned : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

@@ -221,7 +221,7 @@ export async function POST(req: Request) {
 
     const hydratedItem = await getItemByIdWithRelations(item.id);
     return NextResponse.json(hydratedItem ?? item);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Item create error:', error);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }

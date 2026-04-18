@@ -2,15 +2,25 @@ import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
 import { generateTagsForContent } from '@/app/lib/ai-tagging';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
+import { z } from 'zod';
+
+const autoTagSchema = z.object({
+  itemId: z.string().trim().min(1, 'itemId is required'),
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { itemId } = body;
+    const parsed = autoTagSchema.safeParse(body);
 
-    if (!itemId) {
-      return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'itemId is required', details: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
+
+    const { itemId } = parsed.data;
 
     const item = await getItemByIdWithRelations(itemId);
 
@@ -31,16 +41,16 @@ export async function POST(req: Request) {
     }
 
     const existingTagNames = new Set((item.tags || []).map((tag) => tag.name.toLowerCase()));
-    const newTagsToConnect = generatedTags
+    const dedupedGeneratedTags = [...new Set(generatedTags
       .map((tag) => tag.trim().toLowerCase())
-      .filter(Boolean)
+      .filter(Boolean))];
+
+    const newTagsToConnect = dedupedGeneratedTags
       .filter((tag) => !existingTagNames.has(tag));
 
     if (newTagsToConnect.length === 0) {
       return NextResponse.json({ success: true, tags: item.tags, message: 'Tags already up to date' });
     }
-
-    const connectedTags = [];
 
     for (const tagName of newTagsToConnect) {
       const { data: existingTag, error: selectErr } = await db
@@ -71,8 +81,6 @@ export async function POST(req: Request) {
         tag = updatedTag;
       }
 
-      connectedTags.push(tag);
-
       const { error: connectError } = await db
         .from('_ItemToTag')
         .upsert({ A: itemId, B: tag.id }, { onConflict: 'A,B' });
@@ -87,7 +95,7 @@ export async function POST(req: Request) {
       tags: finalItem?.tags || item.tags 
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error auto-tagging item:', error);
     return NextResponse.json(
       { error: 'Failed to generate tags' }, 

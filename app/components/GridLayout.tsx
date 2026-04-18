@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import MasonryGrid from "./MasonryGrid";
 import type { ItemCardItem } from "./ItemCard";
 import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot } from "lucide-react";
@@ -11,6 +11,7 @@ import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
 
 type Item = ItemCardItem;
+type ItemPages = InfiniteData<Item[], number>;
 
 interface GridLayoutProps {
   initialItems: Item[];
@@ -141,10 +142,11 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       return res.json() as Promise<Item>;
     },
     onSuccess: (newItem) => {
-      queryClient.setQueryData(['items', activeFilter, debouncedSearch, searchMode], (old: any) => {
+      queryClient.setQueryData<ItemPages>(['items', activeFilter, debouncedSearch, searchMode], (old) => {
         if (!old) return old;
-        const newPages = [...old.pages];
-        newPages[0] = [newItem, ...newPages[0]];
+
+        const firstPage = old.pages[0] ?? [];
+        const newPages = [[newItem, ...firstPage], ...old.pages.slice(1)];
         return { ...old, pages: newPages };
       });
     },
@@ -193,7 +195,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       if (!res.ok) throw new Error('Failed to delete item');
     },
     onSuccess: (_, id) => {
-      queryClient.setQueryData(['items', activeFilter, debouncedSearch, searchMode], (old: any) => {
+      queryClient.setQueryData<ItemPages>(['items', activeFilter, debouncedSearch, searchMode], (old) => {
         if (!old) return old;
         return {
           ...old,

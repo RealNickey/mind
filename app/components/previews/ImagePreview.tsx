@@ -1,9 +1,17 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function ImagePreview({ url, alt, dimensions, colors }: { url: string, alt?: string, dimensions?: { w: number, h: number }, colors?: string[] }) {
   return (
     <div className="group relative rounded-xl overflow-hidden shadow-sm bg-gray-100 flex flex-col cursor-zoom-in">
-      <img src={url} alt={alt || 'Image preview'} className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-in-out" />
+      <PreviewImage
+        src={url}
+        alt={alt || 'Image preview'}
+        width={dimensions?.w ?? 1200}
+        height={dimensions?.h ?? 900}
+        sizes="(max-width: 768px) 100vw, 40vw"
+        className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-in-out"
+      />
       
       {colors && colors.length > 0 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 bg-white/40 backdrop-blur-md rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">

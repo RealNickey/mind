@@ -1,7 +1,15 @@
 import { db } from './db';
 import { generateEmbedding } from './vectors';
+import type { Database, Tables } from './database.types';
 
-export async function searchSimilarItems(query: string, limit = 5) {
+type MatchItemRow = Database['public']['Functions']['match_items']['Returns'][number];
+type RagItem = Pick<Tables<'Item'>, 'id' | 'title' | 'description' | 'content' | 'type'>;
+
+export type SimilarItemResult = RagItem & {
+  similarity: number;
+};
+
+export async function searchSimilarItems(query: string, limit = 5): Promise<SimilarItemResult[]> {
   try {
     const vector = await generateEmbedding(query);
     
@@ -14,7 +22,7 @@ export async function searchSimilarItems(query: string, limit = 5) {
     });
     if (rpcErr) throw rpcErr;
 
-    const ids = (matchData || []).map((row: any) => row.id);
+    const ids = (matchData ?? []).map((row: MatchItemRow) => row.id);
     if (!ids.length) return [];
 
     const { data: items, error: itemsErr } = await db
@@ -23,12 +31,23 @@ export async function searchSimilarItems(query: string, limit = 5) {
       .in('id', ids);
     if (itemsErr) throw itemsErr;
 
-    const results = (matchData || []).map((match: any) => ({
-      ...match,
-      ...(items?.find((i: any) => i.id === match.id) || {})
-    }));
+    const itemsById = new Map((items ?? []).map((item) => [item.id, item]));
+
+    const results = (matchData ?? [])
+      .map((match: MatchItemRow) => {
+        const item = itemsById.get(match.id);
+        if (!item) {
+          return null;
+        }
+
+        return {
+          ...item,
+          similarity: match.similarity,
+        };
+      })
+      .filter((entry): entry is SimilarItemResult => Boolean(entry));
     
-    return results as any[];
+    return results;
   } catch (error) {
     console.error('RAG semantic search error:', error);
     return [];

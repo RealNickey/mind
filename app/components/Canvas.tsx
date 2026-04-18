@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import CanvasNode from '@/app/components/CanvasNode';
 import type { ItemCardItem } from '@/app/components/ItemCard';
 
@@ -45,7 +46,7 @@ export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
 
   return (
     <div 
-      className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing bg-dot-pattern"
+      className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing bg-zinc-50 dark:bg-zinc-950 relative"
       ref={canvasRef}
       onWheel={handleWheel}
       onPointerDown={() => setIsPanning(true)}
@@ -57,20 +58,40 @@ export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
         }
       }}
     >
+      {/* Dynamic Grid Background */}
       <div 
-        className="absolute origin-top-left transition-transform duration-75 ease-out"
+        className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-20 transition-opacity"
+        style={{
+          backgroundSize: `${40 * zoom}px ${40 * zoom}px`,
+          backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundPosition: `${pan.x}px ${pan.y}px`,
+          color: 'var(--grid-color, #a1a1aa)',
+        }}
+      />
+      
+      <motion.div 
+        className="absolute origin-top-left will-change-transform"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        {items.map(item => (
-          <CanvasNode 
-            key={item.id} 
-            item={item} 
-            onChangePosition={(x, y) => updateNodePosition(item.id, x, y)} 
-            onMouseUp={handleSave}
-            onInspectAI={onInspectAI}
-          />
+        {items.map((item, i) => (
+          <motion.div
+             key={item.id}
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.3, delay: i * 0.05 }}
+          >
+            <CanvasNode 
+              item={item} 
+              onChangePosition={(x, y) => updateNodePosition(item.id, x, y)} 
+              onMouseUp={handleSave}
+              onInspectAI={onInspectAI}
+            />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

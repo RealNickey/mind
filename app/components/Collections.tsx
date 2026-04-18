@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 
 interface Collection {
   id: string;
@@ -12,13 +13,26 @@ interface Collection {
 }
 
 export function Collections() {
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const { data: collections = [], isLoading, isError } = useQuery<Collection[]>({
+    queryKey: ['collections'],
+    queryFn: async () => {
+      const res = await fetch('/api/collections/list');
+      if (!res.ok) throw new Error('Failed to load collections');
+      return res.json();
+    },
+  });
 
-  useEffect(() => {
-    fetch('/api/collections/list')
-      .then((res) => res.json())
-      .then((data) => setCollections(data));
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <div className="text-red-500 py-12 text-center">Failed to load collections.</div>;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

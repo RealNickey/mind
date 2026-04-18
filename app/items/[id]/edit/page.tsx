@@ -35,7 +35,7 @@ export default function EditItemPage() {
         setTitle(data.title || '');
         setDescription(data.description || '');
         setContent(data.content || '');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
         setError('Failed to load item for editing');
       } finally {
@@ -69,7 +69,7 @@ export default function EditItemPage() {
 
       router.push(`/items/${id}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setError('Failed to save item');
     } finally {

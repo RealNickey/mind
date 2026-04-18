@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/db';
+import { z } from 'zod';
+
+const createCollectionSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().optional(),
+  isAuto: z.boolean().optional().default(false),
+  userId: z.string().trim().optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const { name, description, isAuto, userId } = await req.json();
+    const body = await req.json();
+    const parsed = createCollectionSchema.safeParse(body);
 
-    if (!name) {
+    if (!parsed.success) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
+
+    const { name, description, isAuto, userId } = parsed.data;
 
     const { data: collection, error } = await db
       .from('Collection')
@@ -23,7 +34,7 @@ export async function POST(req: Request) {
     if (error) throw error;
 
     return NextResponse.json(collection);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Collection create error:', error);
     return NextResponse.json({ error: 'Failed to create collection' }, { status: 500 });
   }

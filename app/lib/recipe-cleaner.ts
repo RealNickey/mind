@@ -11,6 +11,28 @@ export interface Recipe {
   imageUrl: string | null;
 }
 
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as JsonRecord;
+}
+
+function hasJsonLdType(value: unknown, expectedType: string): boolean {
+  if (typeof value === 'string') {
+    return value === expectedType;
+  }
+
+  if (Array.isArray(value)) {
+    return value.includes(expectedType);
+  }
+
+  return false;
+}
+
 export async function extractRecipeFromHTML(html: string): Promise<Recipe | null> {
   try {
     const $ = cheerio.load(html);
@@ -20,25 +42,39 @@ export async function extractRecipeFromHTML(html: string): Promise<Recipe | null
       try {
         const content = $(el).html();
         if (!content) return;
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(content) as unknown;
         
         const items = Array.isArray(parsed) ? parsed : [parsed];
         
-        for (const item of items) {
-          if (item['@type'] === 'Recipe' || (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
+        for (const rawItem of items) {
+          const item = asRecord(rawItem);
+          if (!item) {
+            continue;
+          }
+
+          if (hasJsonLdType(item['@type'], 'Recipe')) {
             recipeMatch = extractFromJSONLD(item);
             return false;
           }
           
-          if (item['@graph']) {
-            const recipeNode = item['@graph'].find((node: any) => node['@type'] === 'Recipe');
+          if (Array.isArray(item['@graph'])) {
+            const recipeNode = item['@graph']
+              .map((node) => asRecord(node))
+              .find((node): node is JsonRecord => {
+                if (!node) {
+                  return false;
+                }
+
+                return hasJsonLdType(node['@type'], 'Recipe');
+              });
+
             if (recipeNode) {
               recipeMatch = extractFromJSONLD(recipeNode);
               return false;
             }
           }
         }
-      } catch (e) {
+      } catch {
       }
     });
 
@@ -59,9 +95,9 @@ export async function extractRecipeFromHTML(html: string): Promise<Recipe | null
   }
 }
 
-function extractFromJSONLD(recipe: any): Recipe {
-  const parseTime = (isoDuration: string) => {
-    if (!isoDuration) return 0;
+function extractFromJSONLD(recipe: JsonRecord): Recipe {
+  const parseTime = (isoDuration: unknown): number => {
+    if (typeof isoDuration !== 'string' || !isoDuration) return 0;
     try {
       const parsed = parseIsoDuration(isoDuration);
       return Math.floor(toSeconds(parsed) / 60);
@@ -70,28 +106,49 @@ function extractFromJSONLD(recipe: any): Recipe {
     }
   };
 
-  const parseInstructions = (instructions: any): string[] => {
+  const parseInstructions = (instructions: unknown): string[] => {
     if (!instructions) return [];
     if (typeof instructions === 'string') return [instructions];
     if (Array.isArray(instructions)) {
-      return instructions.map((step: any) => {
+      return instructions.map((step) => {
         if (typeof step === 'string') return step;
-        if (step.text) return step.text;
+
+        const stepRecord = asRecord(step);
+        if (stepRecord && typeof stepRecord.text === 'string') {
+          return stepRecord.text;
+        }
+
         return '';
       }).filter(Boolean);
     }
     return [];
   };
 
-  const getImageUrl = (image: any): string | null => {
+  const getImageUrl = (image: unknown): string | null => {
     if (!image) return null;
     if (typeof image === 'string') return image;
-    if (Array.isArray(image) && image.length > 0) return typeof image[0] === 'string' ? image[0] : image[0].url;
-    if (image.url) return image.url;
+
+    if (Array.isArray(image) && image.length > 0) {
+      const first = image[0];
+      if (typeof first === 'string') {
+        return first;
+      }
+
+      const firstRecord = asRecord(first);
+      if (firstRecord && typeof firstRecord.url === 'string') {
+        return firstRecord.url;
+      }
+    }
+
+    const imageRecord = asRecord(image);
+    if (imageRecord && typeof imageRecord.url === 'string') {
+      return imageRecord.url;
+    }
+
     return null;
   };
 
-  const parseYield = (yieldVal: any): number => {
+  const parseYield = (yieldVal: unknown): number => {
     if (!yieldVal) return 1;
     if (typeof yieldVal === 'number') return yieldVal;
     if (typeof yieldVal === 'string') {
@@ -102,9 +159,13 @@ function extractFromJSONLD(recipe: any): Recipe {
     return 1;
   };
 
+  const ingredients = Array.isArray(recipe.recipeIngredient)
+    ? recipe.recipeIngredient.filter((ingredient): ingredient is string => typeof ingredient === 'string')
+    : [];
+
   return {
-    title: recipe.name || 'Unknown Recipe',
-    ingredients: Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [],
+    title: typeof recipe.name === 'string' ? recipe.name : 'Unknown Recipe',
+    ingredients,
     instructions: parseInstructions(recipe.recipeInstructions),
     prepTimeMinutes: parseTime(recipe.prepTime),
     cookTimeMinutes: parseTime(recipe.cookTime),

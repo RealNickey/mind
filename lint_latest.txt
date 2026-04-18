@@ -1,0 +1,40 @@
+
+> temp-app@0.1.0 lint
+> eslint
+
+
+D:\Downloads\Projects\mind\app\components\CanvasNode.tsx
+  37:19  error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+D:\Downloads\Projects\mind\app\components\CanvasNode.tsx:37:19
+  35 |     const canvasPosition = metadata.canvasPosition;
+  36 |     if (item.x == null && !canvasPosition) {
+> 37 |       return { x: Math.random() * 500, y: Math.random() * 500 };
+     |                   ^^^^^^^^^^^^^ Cannot call impure function
+  38 |     }
+  39 |
+  40 |     return {                          react-hooks/purity
+  37:43  error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+D:\Downloads\Projects\mind\app\components\CanvasNode.tsx:37:43
+  35 |     const canvasPosition = metadata.canvasPosition;
+  36 |     if (item.x == null && !canvasPosition) {
+> 37 |       return { x: Math.random() * 500, y: Math.random() * 500 };
+     |                                           ^^^^^^^^^^^^^ Cannot call impure function
+  38 |     }
+  39 |
+  40 |     return {  react-hooks/purity
+  44:6   warning  React Hook useMemo has an unnecessary dependency: 'item.id'. Either exclude it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+
+D:\Downloads\Projects\mind\app\components\previews\PreviewImage.tsx
+  11:10  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+D:\Downloads\Projects\mind\app\graph\page.tsx
+  221:23  error  Parsing error: ',' expected
+
+Γ£û 5 problems (3 errors, 2 warnings)
+

@@ -1,10 +1,11 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function TwitterPreview({ author, handle, avatar, content, date, replies, retweets, likes }: { author: string, handle: string, avatar: string, content: string, date: string, replies: number, retweets: number, likes: number }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
-        <img src={avatar} alt={author} className="w-10 h-10 rounded-full" />
+        <PreviewImage src={avatar} alt={author} width={40} height={40} className="w-10 h-10 rounded-full" />
         <div className="flex flex-col">
           <span className="font-bold text-sm text-gray-900 leading-none">{author}</span>
           <span className="text-sm text-gray-500">@{handle}</span>

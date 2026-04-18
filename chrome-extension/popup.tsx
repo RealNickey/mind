@@ -1,10 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { ExtractedData } from './utils';
 
 const Popup = () => {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<ExtractedData | null>(null);
     const [tags, setTags] = useState<string>('');
-    const [collectionId, setCollectionId] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [token, setToken] = useState<string | null>(null);
 
@@ -41,8 +42,7 @@ const Popup = () => {
                 },
                 body: JSON.stringify({
                     ...data,
-                    tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-                    collectionId: collectionId || undefined
+                    tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
                 })
             });
 
@@ -58,9 +58,10 @@ const Popup = () => {
                 alert("Failed to save. Check console.");
                 console.error(await res.text());
             }
-        } catch (e) {
-            alert("Error saving " + e);
-            console.error(e);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            alert("Error saving " + message);
+            console.error(error);
         } finally {
             setLoading(false);
         }

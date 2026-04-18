@@ -1,10 +1,17 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function YoutubePreview({ title, channel, thumbnail, views, date, duration }: { title: string, channel: string, thumbnail: string, views: string, date: string, duration?: string }) {
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow group flex flex-col">
       <div className="relative aspect-video w-full bg-gray-200">
-        <img src={thumbnail} alt={title} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+        <PreviewImage
+          src={thumbnail}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+        />
         
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-12 h-8 bg-red-600 rounded-lg flex items-center justify-center border border-red-700 opacity-90 group-hover:scale-105 transition-transform shadow-lg">

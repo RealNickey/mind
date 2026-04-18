@@ -1,0 +1,254 @@
+
+> temp-app@0.1.0 lint
+> eslint
+
+
+D:\Downloads\Projects\mind\app\api\canvas\save\route.ts
+  16:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\chat\message\route.ts
+  33:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\collections\create\route.ts
+  26:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\collections\list\route.ts
+  37:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\items\[id]\update\route.ts
+  51:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\items\delete\route.ts
+  20:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\search\semantic\route.ts
+  13:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  72:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\api\tags\list\route.ts
+  11:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\components\AIChat.tsx
+  9:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\components\CanvasNode.tsx
+   9:9  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  26:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\Downloads\Projects\mind\app\components\CanvasNode.tsx:26:7
+  24 |   useEffect(() => {
+  25 |     if (item.x == null && !metadata.canvasPosition) {
+> 26 |       setPos({ x: Math.random() * 500, y: Math.random() * 500 });
+     |       ^^^^^^ Avoid calling setState() directly within an effect
+  27 |     }
+  28 |   }, [item.x, metadata.canvasPosition]);
+  29 |  react-hooks/set-state-in-effect
+
+D:\Downloads\Projects\mind\app\components\GridLayout.tsx
+  144:92  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  196:92  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\components\InfiniteCanvas.tsx
+  3:34  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Downloads\Projects\mind\app\components\KnowledgeGraph.tsx
+  10:72   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  10:86   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  10:114  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  11:24   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  15:5    error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\Downloads\Projects\mind\app\components\KnowledgeGraph.tsx:15:5
+  13 |
+  14 |   useEffect(() => {
+> 15 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |   }, []);
+  17 |
+  18 |   const handleNodeClick = useCallback((node: any) => {  react-hooks/set-state-in-effect
+  18:46   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  31:40   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\components\Omnibar.tsx
+   11:54  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   15:3   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  204:21  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+D:\Downloads\Projects\mind\app\components\ReadingModeTTS.tsx
+  40:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\Downloads\Projects\mind\app\components\ReadingModeTTS.tsx:40:7
+  38 |
+  39 |     if (!speech.hasBrowserSupport()) {
+> 40 |       setError('Text-to-speech is not supported in this browser.');
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  41 |       setIsReady(false);
+  42 |       return () => {
+  43 |         speechRef.current = null;  react-hooks/set-state-in-effect
+
+D:\Downloads\Projects\mind\app\components\previews\ArticlePreview.tsx
+  8:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\BookPreview.tsx
+   3:61  warning  'identifier' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  20:9   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\ImagePreview.tsx
+  6:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\InstagramPreview.tsx
+   9:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  25:9   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\LinkPreview.tsx
+   7:12  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  15:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\MoviePreview.tsx
+  16:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  25:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\MusicPreview.tsx
+  21:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\PlacePreview.tsx
+  7:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\ProductPreview.tsx
+  10:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\QuotePreview.tsx
+  7:9  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+D:\Downloads\Projects\mind\app\components\previews\RecipePreview.tsx
+  10:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\TVShowPreview.tsx
+  7:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\TwitterPreview.tsx
+  7:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\VideoPreview.tsx
+  3:40  warning  'url' is defined but never used                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  6:7   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\components\previews\YoutubePreview.tsx
+  7:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\app\graph\page.tsx
+   11:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   11:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   13:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   22:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   32:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   33:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   35:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\items\[id]\edit\page.tsx
+  38:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  72:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\archive.ts
+  41:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Downloads\Projects\mind\app\lib\books.ts
+  21:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\canvas-state.ts
+  9:9  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\content-detection.ts
+  25:58  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  88:45  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:45  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  96:12  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+D:\Downloads\Projects\mind\app\lib\image-processing.ts
+  1:1  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+D:\Downloads\Projects\mind\app\lib\metadata.ts
+  14:8   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  62:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\rag.ts
+  17:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\recipe-cleaner.ts
+  34:59  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:16  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  62:36  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:44  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:31  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:33  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\types.ts
+  12:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\lib\vectors.ts
+  40:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\app\page.tsx
+  5:29  warning  'Zap' is defined but never used     @typescript-eslint/no-unused-vars
+  5:68  warning  'Layers' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Downloads\Projects\mind\chrome-extension\background.ts
+  28:19  warning  'data' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Downloads\Projects\mind\chrome-extension\popup.tsx
+   5:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   7:26  warning  'setCollectionId' is assigned a value but never used                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  84:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Downloads\Projects\mind\chrome-extension\utils.ts
+  12:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\Downloads\Projects\mind\fix.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+D:\Downloads\Projects\mind\recover.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+Γ£û 106 problems (78 errors, 28 warnings)
+

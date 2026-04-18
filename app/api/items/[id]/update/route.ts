@@ -48,7 +48,7 @@ export async function PUT(
     }
 
     return NextResponse.json(hydratedItem);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update item error:', error);
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
   }

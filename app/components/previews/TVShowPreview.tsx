@@ -1,10 +1,11 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function TVShowPreview({ name, poster, seasons, rating, year, network }: { name: string, poster: string, seasons: number, rating: number, year: string, network?: string }) {
   return (
     <div className="flex bg-white shadow-sm border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       <div className="w-1/3 relative">
-        <img src={poster} alt={name} className="h-full w-full object-cover" />
+        <PreviewImage src={poster} alt={name} fill sizes="(max-width: 768px) 33vw, 140px" className="h-full w-full object-cover" />
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
           TV
         </div>

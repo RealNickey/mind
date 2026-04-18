@@ -1,6 +1,7 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
-export default function BookPreview({ title, author, cover, identifier, rating }: { title: string, author: string, cover: string, identifier?: string, rating?: number }) {
+export default function BookPreview({ title, author, cover, rating }: { title: string, author: string, cover: string, identifier?: string, rating?: number }) {
   return (
     <div className="relative isolate p-8 bg-[#e9e1d8] rounded-xl overflow-hidden shadow-inner flex flex-col items-center justify-center min-h-[320px] group perspective-[1000px]">
       {/* Background texture */}
@@ -17,7 +18,13 @@ export default function BookPreview({ title, author, cover, identifier, rating }
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 z-20 pointer-events-none transition-opacity duration-700" />
         
         {/* Cover Image */}
-        <img src={cover} alt={title} className="w-full h-full object-cover rounded-r-md rounded-l-sm" />
+        <PreviewImage
+          src={cover}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 128px, 176px"
+          className="w-full h-full object-cover rounded-r-md rounded-l-sm"
+        />
       </div>
       
       <div className="relative z-10 mt-6 text-center w-full px-2">

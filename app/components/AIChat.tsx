@@ -3,10 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 
+interface MessageSource {
+  id: string;
+  title: string;
+  type: string;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: any[];
+  sources?: MessageSource[];
 }
 
 export function AIChat() {
@@ -38,12 +44,15 @@ export function AIChat() {
       });
 
       if (!res.ok) throw new Error('Failed to fetch response');
-      const data = await res.json();
+      const data = await res.json() as {
+        reply?: string;
+        sources?: MessageSource[];
+      };
       
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.reply,
-        sources: data.sources
+        content: data.reply ?? 'I could not generate a response.',
+        sources: data.sources ?? []
       }]);
     } catch (error) {
       console.error(error);

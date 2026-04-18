@@ -37,9 +37,12 @@ export function ReadingModeTTS({ text, title }: ReadingModeTTSProps) {
     speechRef.current = speech;
 
     if (!speech.hasBrowserSupport()) {
-      setError('Text-to-speech is not supported in this browser.');
-      setIsReady(false);
+      const timer = setTimeout(() => {
+        setError('Text-to-speech is not supported in this browser.');
+        setIsReady(false);
+      }, 0);
       return () => {
+        clearTimeout(timer);
         speechRef.current = null;
       };
     }

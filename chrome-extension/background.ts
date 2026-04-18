@@ -24,8 +24,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
               type: info.selectionText ? 'note' : (info.srcUrl ? 'image' : 'article'),
               title: info.selectionText ? 'Clipped Text' : tab?.title || 'Saved Item'
             })
-          }).then(res => res.json())
-            .then(data => {
+          }).then((res) => res.json())
+            .then(() => {
               chrome.notifications.create({
                 type: 'basic',
                 iconUrl: 'icons/icon48.png',

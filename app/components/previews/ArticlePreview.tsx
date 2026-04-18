@@ -1,11 +1,18 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function ArticlePreview({ title, excerpt, domain, thumbnail, readingTime }: { title: string, excerpt: string, domain: string, thumbnail?: string, readingTime?: string }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white/80 backdrop-blur-md shadow-sm transition-all hover:shadow-md">
       {thumbnail && (
-        <div className="h-48 w-full overflow-hidden">
-          <img src={thumbnail} alt={title} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+        <div className="relative h-48 w-full overflow-hidden">
+          <PreviewImage
+            src={thumbnail}
+            alt={title}
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+          />
         </div>
       )}
       <div className="p-4 flex flex-col gap-2 relative">

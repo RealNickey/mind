@@ -1,6 +1,5 @@
 import { db } from './db';
-import { generateLocalEmbedding } from './embeddings';
-import { generateGroqEmbedding } from './groq';
+import { generateEmbedding } from './vectors';
 import {
   DUPLICATE_THRESHOLD,
   scoreDuplicatePair,
@@ -109,15 +108,12 @@ async function generateEmbeddingWithFallback(
   try {
     return {
       source: 'local',
-      embedding: await generateLocalEmbedding(text),
-      modelVersion: 'Xenova/all-MiniLM-L6-v2',
+      embedding: await generateEmbedding(text),
+      modelVersion: 'cohere/embed-english-v3.0',
     };
-  } catch {
-    return {
-      source: 'groq',
-      embedding: await generateGroqEmbedding(text),
-      modelVersion: 'groq/nomic-embed-text-v1_5@384',
-    };
+  } catch (error) {
+    console.error('Embedding generation failed:', error);
+    throw error;
   }
 }
 

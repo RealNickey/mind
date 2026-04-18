@@ -1,12 +1,49 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import ItemCard from '@/app/components/ItemCard';
 import type { ItemCardItem } from '@/app/components/ItemCard';
 
+type CanvasPosition = {
+  x?: number;
+  y?: number;
+};
+
+function readCanvasPosition(customData: unknown): CanvasPosition | null {
+  if (!customData || typeof customData !== 'object' || Array.isArray(customData)) {
+    return null;
+  }
+
+  const position = (customData as { canvasPosition?: unknown }).canvasPosition;
+  if (!position || typeof position !== 'object' || Array.isArray(position)) {
+    return null;
+  }
+
+  return position as CanvasPosition;
+}
+
+function seededCanvasPosition(seed: string): { x: number; y: number } {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+
+  const positiveHash = Math.abs(hash);
+  return {
+    x: positiveHash % 500,
+    y: Math.floor(positiveHash / 7) % 500,
+  };
+}
+
+type CanvasNodeItem = ItemCardItem & {
+  x?: number;
+  y?: number;
+};
+
 interface CanvasNodeProps {
-  item: any;
+  item: CanvasNodeItem;
   onChangePosition: (x: number, y: number) => void;
   onMouseUp?: () => void;
   onInspectAI?: (item: ItemCardItem) => void;
@@ -14,23 +51,25 @@ interface CanvasNodeProps {
 
 export default function CanvasNode({ item, onChangePosition, onMouseUp, onInspectAI }: CanvasNodeProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const metadata = item.metadata?.customData || {};
-  
-  const [pos, setPos] = useState({ 
-    x: item.x ?? metadata.canvasPosition?.x ?? 0, 
-    y: item.y ?? metadata.canvasPosition?.y ?? 0 
-  });
+  const canvasPosition = readCanvasPosition(item.metadata?.customData);
 
-  useEffect(() => {
-    if (item.x == null && !metadata.canvasPosition) {
-      setPos({ x: Math.random() * 500, y: Math.random() * 500 });
+  const initialPos = useMemo(() => {
+    if (item.x == null && !canvasPosition) {
+      return seededCanvasPosition(item.id);
     }
-  }, [item.x, metadata.canvasPosition]);
+
+    return {
+      x: item.x ?? canvasPosition?.x ?? 0,
+      y: item.y ?? canvasPosition?.y ?? 0,
+    };
+  }, [item.id, item.x, item.y, canvasPosition]);
+
+  const [pos, setPos] = useState(initialPos);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     setIsDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -46,7 +85,7 @@ export default function CanvasNode({ item, onChangePosition, onMouseUp, onInspec
   const handlePointerUp = (e: React.PointerEvent) => {
     e.stopPropagation();
     setIsDragging(false);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    e.currentTarget.releasePointerCapture(e.pointerId);
     if (onMouseUp) onMouseUp();
   };
 
@@ -65,7 +104,7 @@ export default function CanvasNode({ item, onChangePosition, onMouseUp, onInspec
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            onInspectAI(item as ItemCardItem);
+            onInspectAI(item);
           }}
           className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-700 shadow-sm transition-colors hover:bg-zinc-100 hover:text-blue-600 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-200 dark:hover:bg-zinc-800"
           title={`Open AI insights for ${item.title}`}

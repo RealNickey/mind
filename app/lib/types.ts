@@ -9,7 +9,7 @@ export interface BaseItem {
 export interface CanvasItem extends BaseItem {
   x?: number;
   y?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface KnowledgeGraphItem extends BaseItem {
@@ -20,7 +20,7 @@ export interface KnowledgeGraphLink {
   id?: string;
   sourceItemId: string;
   targetItemId: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface GraphNode {
@@ -65,7 +65,7 @@ export interface DeleteItemResponse {
 export interface ItemMetadata {
   id?: string;
   itemId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Tag {

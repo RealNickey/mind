@@ -1,9 +1,17 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
-export default function VideoPreview({ url, thumbnail, title, duration }: { url: string, thumbnail?: string, title?: string, duration?: string }) {
+export default function VideoPreview({ thumbnail, title, duration }: { url?: string, thumbnail?: string, title?: string, duration?: string }) {
   return (
     <div className="relative rounded-xl overflow-hidden shadow-md group bg-black cursor-pointer">
-      <img src={thumbnail || '/video-placeholder.png'} alt={title || 'Video'} className="w-full h-auto object-cover opacity-80 group-hover:opacity-60 transition-opacity" />
+      <PreviewImage
+        src={thumbnail || '/video-placeholder.png'}
+        alt={title || 'Video'}
+        width={1280}
+        height={720}
+        sizes="(max-width: 768px) 100vw, 40vw"
+        className="w-full h-auto object-cover opacity-80 group-hover:opacity-60 transition-opacity"
+      />
       
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 group-hover:scale-110 transition-transform">

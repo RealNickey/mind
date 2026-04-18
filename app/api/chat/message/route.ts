@@ -2,14 +2,30 @@ import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { groq } from '@ai-sdk/groq';
 import { searchSimilarItems } from '../../../lib/rag';
+import { z } from 'zod';
+
+const chatRequestSchema = z.object({
+  message: z.string().trim().min(1),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant', 'system']),
+        content: z.string().trim().min(1),
+      })
+    )
+    .default([]),
+});
 
 export async function POST(req: Request) {
   try {
-    const { message, history } = await req.json();
+    const body = await req.json();
+    const parsed = chatRequestSchema.safeParse(body);
 
-    if (!message) {
+    if (!parsed.success) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
+
+    const { message, history } = parsed.data;
 
     const contextItems = await searchSimilarItems(message, 5);
 
@@ -30,17 +46,12 @@ export async function POST(req: Request) {
       ${contextStr}
     `;
 
-    const formattedHistory = (history || []).map((h: any) => ({
-      role: h.role,
-      content: h.content
-    }));
-
     const response = await generateText({
       model: groq('llama3-8b-8192'),
       system: systemPrompt,
       messages: [
-        ...formattedHistory,
-        { role: 'user', content: message }
+        ...history,
+        { role: 'user', content: message },
       ],
       
     });

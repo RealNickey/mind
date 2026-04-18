@@ -34,7 +34,7 @@ export async function GET() {
     }));
 
     return NextResponse.json(payload);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Collection list error:', error);
     return NextResponse.json({ error: 'Failed to fetch collections' }, { status: 500 });
   }

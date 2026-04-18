@@ -1,4 +1,5 @@
 import React from 'react';
+import PreviewImage from './PreviewImage';
 
 export default function ProductPreview({ title, price, currency = '$', store, imageUrl, rating, reviews }: { title: string, price: string, currency?: string, store: string, imageUrl: string, rating?: number, reviews?: number }) {
   return (
@@ -7,7 +8,14 @@ export default function ProductPreview({ title, price, currency = '$', store, im
         <div className="absolute top-2 left-2 px-2 py-0.5 bg-gray-900 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
           {store}
         </div>
-        <img src={imageUrl} alt={title} className="h-40 object-contain drop-shadow-md mix-blend-multiply" />
+        <PreviewImage
+          src={imageUrl}
+          alt={title}
+          width={320}
+          height={320}
+          sizes="(max-width: 768px) 160px, 200px"
+          className="h-40 object-contain drop-shadow-md mix-blend-multiply"
+        />
       </div>
       
       <div className="p-4 flex flex-col gap-2 relative border-t border-gray-50">

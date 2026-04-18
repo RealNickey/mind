@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 
+interface CanvasNodeItem {
+  id: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
 interface CanvasNodeDef {
   id: string;
   x: number;
   y: number;
   width: number;
   height: number;
-  item: any;
+  item: CanvasNodeItem;
 }
 
 interface CanvasState {
@@ -49,12 +55,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setIsDraggingCanvas: (isDragging) => set({ isDraggingCanvas: isDragging }),
   saveCanvasBackend: async () => {
     const { nodes } = get();
-    const itemsToSave = Object.values(nodes).map(n => ({ id: n.id, x: n.x, y: n.y }));
+    const nodesToSave = Object.values(nodes).map((node) => ({ id: node.id, x: node.x, y: node.y }));
     try {
       await fetch('/api/canvas/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: itemsToSave })
+        body: JSON.stringify({ nodes: nodesToSave })
       });
     } catch (e) {
       console.error('Failed to save canvas state', e);
