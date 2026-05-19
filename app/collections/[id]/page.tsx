@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import type { ItemCardItem } from '@/app/components/ItemCard';
 import { ItemQuickAIPanel } from '@/app/components/ItemQuickAIPanel';
+import ItemViewDialog from '@/app/components/ItemViewDialog';
 
 interface CollectionResponse {
   id: string;
@@ -19,6 +20,7 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
   const [collection, setCollection] = useState<CollectionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAIItem, setSelectedAIItem] = useState<ItemCardItem | null>(null);
+  const [expandedItem, setExpandedItem] = useState<ItemCardItem | null>(null);
 
   useEffect(() => {
     async function fetchCollection() {
@@ -38,7 +40,7 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
   }, [resolvedParams.id]);
 
   const handleExpand = (item: ItemCardItem) => {
-    router.push(`/items/${item.id}`);
+    setExpandedItem(item);
   };
 
   const handleCanvas = (item: ItemCardItem) => {
@@ -66,6 +68,12 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
         item={selectedAIItem}
         isOpen={Boolean(selectedAIItem)}
         onClose={() => setSelectedAIItem(null)}
+      />
+
+      <ItemViewDialog
+        item={expandedItem}
+        isOpen={Boolean(expandedItem)}
+        onClose={() => setExpandedItem(null)}
       />
     </div>
   );

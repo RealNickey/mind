@@ -34,6 +34,9 @@ export function ReadingModeTTS({ text, title }: ReadingModeTTSProps) {
   }, [text]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
     const speech = new SpeakTTS();
     speechRef.current = speech;
 

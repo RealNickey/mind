@@ -46,7 +46,7 @@ function buildHeaders(headers: HeadersInit | undefined, hasBody: boolean): Heade
     normalized.set('Content-Type', 'application/json');
   }
 
-  return normalized.size > 0 ? normalized : undefined;
+  return [...normalized.keys()].length > 0 ? normalized : undefined;
 }
 
 async function readJsonResponse<TResponse>(response: Response): Promise<TResponse> {

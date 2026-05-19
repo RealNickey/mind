@@ -35,8 +35,12 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       className={`${inter.variable} ${playfair.variable} ${caveat.variable} h-full antialiased`}
+      style={{ colorScheme: 'light dark' }}
     >
-      <body className="min-h-screen flex flex-col relative bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 antialiased selection:bg-blue-500/30 selection:text-blue-200">
+      <head>
+        <meta name="theme-color" content="#09090b" />
+      </head>
+      <body className="min-h-screen flex flex-col relative bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 antialiased selection:bg-blue-500/30 selection:text-blue-200" style={{ touchAction: 'manipulation', overscrollBehavior: 'contain' }}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <FilmGrainEffect />

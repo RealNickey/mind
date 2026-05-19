@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Sparkles, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { ItemCardItem } from './ItemCard';
 import { ItemInsightsPanel } from './ItemInsightsPanel';
 import { ReadingModeTTS } from './ReadingModeTTS';
@@ -96,12 +97,9 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !item) {
-    return null;
-  }
 
-  const sourceUrl = item.metadata?.sourceUrl ?? item.sourceUrl ?? null;
-  const metadataCustom = asObject(item.metadata?.customData);
+  const sourceUrl = item?.metadata?.sourceUrl ?? item?.sourceUrl ?? null;
+  const metadataCustom = asObject(item?.metadata?.customData);
   const rawLinkHealth = asObject(metadataCustom?.linkHealth);
   const statusCandidate = asLinkHealthStatus(rawLinkHealth?.status);
 
@@ -115,25 +113,29 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
     : null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-end">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-zinc-950/20 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {isOpen && item ? (
 
-      <motion.aside
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`ai-insights-title-${item.id}`}
-        className="relative z-10 m-4 h-[calc(100vh-2rem)] w-full max-w-md overflow-hidden rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl shadow-2xl border border-white/20 dark:border-zinc-800/20 ring-1 ring-black/5 dark:ring-white/5 flex flex-col"
-      >
+        <div className="fixed inset-0 z-[70] flex items-center justify-end">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'linear' }}
+            className="absolute inset-0 bg-zinc-950/20 backdrop-blur-sm"
+            onClick={onClose}
+          />
+
+          <motion.aside
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`ai-insights-title-${item.id}`}
+            className="relative z-10 m-4 h-[calc(100vh-2rem)] w-full max-w-md overflow-hidden rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl shadow-2xl border border-white/20 dark:border-zinc-800/20 ring-1 ring-black/5 dark:ring-white/5 flex flex-col"
+          >
         <header className="p-6 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -151,7 +153,7 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-100/50 dark:bg-zinc-800/50 transition-all duration-150 ease-out hover:scale-[1.05] active:scale-[0.97]"
+              className="rounded-xl p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-100/50 dark:bg-zinc-800/50 transition-colors duration-150 ease-out active:scale-[0.97]"
               aria-label="Close panel"
             >
               <X className="h-4 w-4" />
@@ -193,8 +195,10 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
               initialLinkHealth={initialLinkHealth}
             />
           </div>
+          </div>
+          </motion.aside>
         </div>
-      </motion.aside>
-    </div>
+      ) : null}
+    </AnimatePresence>
   );
 }

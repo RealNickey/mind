@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { ArrowUpRight, ArrowDownLeft, Link2 } from 'lucide-react';
 import { getItemById, type ItemLinkEdge } from '@/app/lib/api-client/items';
 import { ApiClientError } from '@/app/lib/api-client/http';
 
@@ -12,6 +12,29 @@ interface LinkedItemsData {
 }
 
 const EMPTY_LINKS: LinkedItemsData = { sourceLinks: [], targetLinks: [] };
+
+function LinkItem({ href, title, variant }: { href: string; title: string; variant: 'out' | 'in' }) {
+  return (
+    <Link 
+      href={href} 
+      className="group flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors duration-150"
+    >
+      <div className={`shrink-0 p-1.5 rounded-lg ${
+        variant === 'out' 
+          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400' 
+          : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400'
+      }`}>
+        {variant === 'out' 
+          ? <ArrowUpRight size={11} /> 
+          : <ArrowDownLeft size={11} />
+        }
+      </div>
+      <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors duration-150 line-clamp-1 leading-tight">
+        {title}
+      </span>
+    </Link>
+  );
+}
 
 export function LinkedItemsPanel({ itemId }: { itemId: string }) {
   const { data } = useQuery<LinkedItemsData, Error, LinkedItemsData>({
@@ -37,59 +60,44 @@ export function LinkedItemsPanel({ itemId }: { itemId: string }) {
   });
   const links = data ?? EMPTY_LINKS;
 
+  const hasLinks = links.sourceLinks.length > 0 || links.targetLinks.length > 0;
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Linked Items</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div>
-            <h4 className="font-semibold text-sm mb-2 text-gray-500">Mentions / Links Out</h4>
-            {links.sourceLinks.length === 0 ? (
-              <p className="text-sm text-gray-400">No outgoing links.</p>
-            ) : (
-              <ul className="list-disc pl-4 text-sm">
-                {links.sourceLinks.map((link) => {
-                  if (!link.targetItem?.id) {
-                    return null;
-                  }
+    <div className="rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-800/20 backdrop-blur-sm ring-1 ring-black/5 dark:ring-white/5 overflow-hidden">
+      <div className="px-5 py-4 border-b border-zinc-200/50 dark:border-zinc-800/50 flex items-center gap-2">
+        <Link2 size={14} className="text-zinc-400" />
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Linked Items</h3>
+      </div>
+      
+      <div className="p-2">
+        {!hasLinks && (
+          <p className="px-3 py-4 text-xs font-medium text-zinc-400 text-center">No linked items yet.</p>
+        )}
 
-                  return (
-                    <li key={link.id}>
-                      <Link href={`/items/${link.targetItem.id}`} className="text-[#FFB3D9] hover:underline">
-                        {link.targetItem.title}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+        {links.sourceLinks.length > 0 && (
+          <div className="mb-1">
+            <p className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400">Links Out</p>
+            {links.sourceLinks.map((link) => {
+              if (!link.targetItem?.id) return null;
+              return (
+                <LinkItem key={link.id} href={`/items/${link.targetItem.id}`} title={link.targetItem.title} variant="out" />
+              );
+            })}
           </div>
-          <div>
-            <h4 className="font-semibold text-sm mb-2 text-gray-500">Backlinks / Linked From</h4>
-            {links.targetLinks.length === 0 ? (
-              <p className="text-sm text-gray-400">No incoming links.</p>
-            ) : (
-              <ul className="list-disc pl-4 text-sm">
-                {links.targetLinks.map((link) => {
-                  if (!link.sourceItem?.id) {
-                    return null;
-                  }
+        )}
 
-                  return (
-                    <li key={link.id}>
-                      <Link href={`/items/${link.sourceItem.id}`} className="text-[#B3E5D1] hover:underline">
-                        {link.sourceItem.title}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+        {links.targetLinks.length > 0 && (
+          <div>
+            <p className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400">Backlinks</p>
+            {links.targetLinks.map((link) => {
+              if (!link.sourceItem?.id) return null;
+              return (
+                <LinkItem key={link.id} href={`/items/${link.sourceItem.id}`} title={link.sourceItem.title} variant="in" />
+              );
+            })}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }

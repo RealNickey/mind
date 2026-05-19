@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import MasonryGrid from "./MasonryGrid";
 import type { ItemCardItem } from "./ItemCard";
-import { Filter, Search, Calendar, Tags, LayoutTemplate, Loader2, Sparkles, Bot } from "lucide-react";
+import { Filter, Search, Tags, LayoutTemplate, Loader2, Sparkles, Bot, Brain } from "lucide-react";
 import InfiniteCanvas from "./InfiniteCanvas";
 import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
+import ItemViewDialog from "./ItemViewDialog";
 import { fetchSemanticSearch } from "@/app/lib/semantic-search";
 import { createItem, deleteItem, listItems, type CreateItemPayload } from "@/app/lib/api-client/items";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -67,6 +69,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [error, setError] = useState<string | null>(null);
   const [showAssistant, setShowAssistant] = useState(false);
   const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
+  const [expandedItem, setExpandedItem] = useState<Item | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
 
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -188,8 +191,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       const text = e.clipboardData?.getData("text/plain");
       if (text) handlePaste(text);
     };
-    window.addEventListener("paste", handleGlobalPaste);
-    return () => window.removeEventListener("paste", handleGlobalPaste);
+    if (typeof window !== 'undefined') {
+      window.addEventListener("paste", handleGlobalPaste);
+      return () => window.removeEventListener("paste", handleGlobalPaste);
+    }
   }, [handlePaste]);
 
   const deleteMutation = useMutation({
@@ -207,7 +212,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     }
   });
 
-  const handleExpand = (item: Item) => router.push(`/items/${item.id}`);
+  const handleExpand = (item: Item) => setExpandedItem(item);
   const handleEdit = (item: Item) => router.push(`/items/${item.id}/edit`);
   const handleDelete = (item: Item) => {
     deleteMutation.mutate(item.id);
@@ -225,54 +230,78 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top Header / Filter Bar */}
-      <div className="sticky top-6 z-40 mx-auto w-[calc(100%-3rem)] max-w-7xl">
-        <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-3xl border border-white/20 dark:border-zinc-800/30 px-8 py-4 flex items-center justify-between gap-8 rounded-[1.5rem] shadow-2xl shadow-black/5 dark:shadow-white/5 ring-1 ring-black/5 dark:ring-white/5">
+      <div className="sticky top-4 z-40 mx-auto w-[calc(100%-2rem)] max-w-7xl">
+        <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-3xl border border-white/20 dark:border-zinc-800/30 px-5 py-3 flex items-center justify-between gap-6 rounded-2xl shadow-2xl shadow-black/5 dark:shadow-white/5 ring-1 ring-black/5 dark:ring-white/5">
           
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="p-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100">
+              <Brain size={14} className="text-zinc-100 dark:text-zinc-900" />
+            </div>
+            <span className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 hidden sm:block font-heading">mind</span>
+          </div>
+
+          {/* Filter tabs */}
           <div 
-            className="flex items-center gap-3 overflow-x-auto pb-1 max-w-[45%] scrollbar-hide mask-fade-right"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 flex-1 scrollbar-hide mask-fade-right"
             role="tablist"
             aria-label="Filter items by type"
           >
-            {FILTER_TYPES.map((type) => (
-              <button
-                key={type}
-                role="tab"
-                aria-selected={activeFilter === type}
-                onClick={() => setActiveFilter(type)}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
-                  activeFilter === type
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+{FILTER_TYPES.map((type) => (
+                <button
+                  key={type}
+                  role="tab"
+                  aria-selected={activeFilter === type}
+                  aria-label={`Filter by ${type}`}
+                  onClick={() => setActiveFilter(type)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveFilter(type);
+                    }
+                  }}
+                  className={`relative px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 ${
+                    activeFilter === type
+                      ? "text-white dark:text-zinc-900"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {activeFilter === type && (
+                    <motion.span
+                      layoutId="filter-pill"
+                      className="absolute inset-0 rounded-lg bg-zinc-900 dark:bg-zinc-100"
+                      transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                      style={{ zIndex: -1, transformOrigin: 'left center' }}
+                    />
+                  )}
+                  <span className="relative z-10">{type}</span>
+                </button>
+              ))}
           </div>
 
-          <div className="flex-1 flex justify-end gap-3 items-center">
-            <div className="relative w-full max-w-sm group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-zinc-100 transition-colors" size={14} />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative w-48 sm:w-64 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-700 dark:group-focus-within:text-zinc-200 transition-colors duration-150" size={13} />
               <input
                 type="text"
                 placeholder={searchMode === "semantic" ? "Semantic search..." : "Search..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border-none bg-zinc-100/50 dark:bg-zinc-800/50 focus:outline-none focus:ring-1 focus:ring-zinc-400/50 text-xs font-medium placeholder:text-zinc-400"
+                className="w-full pl-9 pr-4 py-1.5 rounded-lg border-none bg-zinc-100/70 dark:bg-zinc-800/70 focus:outline-none focus:ring-1 focus:ring-zinc-400/50 text-xs font-medium placeholder:text-zinc-400 transition-shadow duration-150"
                 aria-label="Search items"
               />
               {(isLoading || isFetchingNextPage) && (
-                <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={12} />
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 animate-spin" size={12} />
               )}
             </div>
             
-            <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
 
-            <div className="flex items-center gap-1.5 bg-zinc-100/30 dark:bg-zinc-800/30 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-zinc-100/50 dark:bg-zinc-800/50 p-1 rounded-lg">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                    className={`p-1.5 rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 active:scale-[0.97] transition-transform ${
                       searchMode === "semantic"
                         ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100"
                         : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -280,7 +309,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                     onClick={() => setSearchMode((prev) => (prev === "keyword" ? "semantic" : "keyword"))}
                     aria-label="Toggle semantic search"
                   >
-                    <Sparkles size={16} aria-hidden="true" />
+                    <Sparkles size={14} aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Toggle semantic search</TooltipContent>
@@ -289,15 +318,15 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
+                    className={`p-1.5 rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 active:scale-[0.97] transition-transform ${
                       showAssistant
-                        ? "bg-white text-emerald-600 shadow-sm dark:bg-zinc-700 dark:text-emerald-400"
+                        ? "bg-emerald-50 text-emerald-600 shadow-sm dark:bg-zinc-700 dark:text-emerald-400"
                         : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                     }`}
                     onClick={() => setShowAssistant((prev) => !prev)}
                     aria-label="Toggle AI assistant"
                   >
-                    <Bot size={16} aria-hidden="true" />
+                    <Bot size={14} aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Toggle AI assistant</TooltipContent>
@@ -306,32 +335,41 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button 
-                    className={`p-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
-                      viewMode === 'canvas' ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-700 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                    className={`p-1.5 rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 active:scale-[0.97] transition-transform ${
+                      viewMode === 'canvas' ? 'bg-indigo-50 text-indigo-600 shadow-sm dark:bg-zinc-700 dark:text-indigo-400' : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                     }`}
                     onClick={() => setViewMode(viewMode === 'grid' ? 'canvas' : 'grid')}
-                    aria-label="Toggle Canvas View"
+                    aria-label="Toggle canvas view"
                   >
-                    <LayoutTemplate size={16} aria-hidden="true" />
+                    <LayoutTemplate size={14} aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Toggle Canvas View</TooltipContent>
               </Tooltip>
-            </div>
 
-            <div className="flex items-center gap-1">
-              <button 
-                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                aria-label="Filter items"
-              >
-                <Filter size={16} aria-hidden="true" />
-              </button>
-              <button 
-                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                aria-label="Tags"
-              >
-                <Tags size={16} aria-hidden="true" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 active:scale-[0.97] transition-transform"
+                    aria-label="Filter items"
+                  >
+                    <Filter size={14} aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Advanced filters</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 active:scale-[0.97] transition-transform"
+                    aria-label="View tags"
+                  >
+                    <Tags size={14} aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Filter by tags</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -404,15 +442,31 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       </div>
 
       {showAssistant && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-1.5rem)]">
+        <motion.div
+          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-1.5rem)]"
+          style={{ 
+            overflow: 'hidden',
+            overscrollBehavior: 'contain'
+          }}
+        >
           <AIChat />
-        </div>
+        </motion.div>
       )}
 
       <ItemQuickAIPanel
         item={selectedAIItem}
         isOpen={Boolean(selectedAIItem)}
         onClose={() => setSelectedAIItem(null)}
+      />
+
+      <ItemViewDialog
+        item={expandedItem}
+        isOpen={Boolean(expandedItem)}
+        onClose={() => setExpandedItem(null)}
       />
     </div>
   );

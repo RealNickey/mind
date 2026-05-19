@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 interface MessageSource {
   id: string;
@@ -75,6 +76,11 @@ export function AIChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isLoading = status === 'submitted' || status === 'streaming';
   const displayMessages = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+  const shouldReduceMotion = useReducedMotion();
+
+  const messageTransition = shouldReduceMotion
+    ? { duration: 0.001 }
+    : { duration: 0.2, ease: [0.23, 1, 0.32, 1] as const };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -108,11 +114,11 @@ export function AIChat() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 font-sans text-sm scrollbar-hide" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 font-sans text-sm scrollbar-hide" ref={scrollRef}>
         {displayMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-              <Bot size={24} className="text-zinc-400" />
+              <Bot size={22} className="text-zinc-400" />
             </div>
             <div className="space-y-1">
               <p className="text-zinc-900 dark:text-zinc-100 font-semibold">How can I help you?</p>
@@ -125,22 +131,28 @@ export function AIChat() {
           const sources = getMessageSources(m);
 
           return (
-          <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${
+          <motion.div
+            key={m.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={messageTransition}
+            className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`max-w-[85%] p-3.5 rounded-2xl shadow-sm text-[13px] leading-relaxed ${
               m.role === 'user' 
-                ? 'bg-zinc-900 text-zinc-100 rounded-tr-none dark:bg-zinc-100 dark:text-zinc-900' 
-                : 'bg-white/50 dark:bg-zinc-800/50 text-zinc-800 dark:text-zinc-200 rounded-tl-none border border-zinc-200/50 dark:border-zinc-700/50'
+                ? 'bg-zinc-900 text-zinc-100 rounded-tr-md dark:bg-zinc-100 dark:text-zinc-900' 
+                : 'bg-white/60 dark:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 rounded-tl-md border border-zinc-200/50 dark:border-zinc-700/50 backdrop-blur-sm'
             }`}>
               <div className="leading-relaxed whitespace-pre-wrap">
                 {getMessageText(m)}
               </div>
                
               {sources.length > 0 && (
-                <div className={`mt-4 pt-3 border-t text-[10px] ${
+                <div className={`mt-3 pt-2.5 border-t text-[10px] ${
                   m.role === 'user' ? 'border-zinc-700 dark:border-zinc-300' : 'border-zinc-200 dark:border-zinc-700'
                 }`}>
-                  <span className="font-bold uppercase tracking-widest block mb-2 opacity-60">Sources</span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span className="font-bold uppercase tracking-widest block mb-1.5 opacity-60">Sources</span>
+                  <div className="flex flex-wrap gap-1">
                      {sources.map((s, idx) => (
                        <span key={idx} className={`px-2 py-0.5 rounded-md ${
                          m.role === 'user' 
@@ -154,20 +166,30 @@ export function AIChat() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
           );
         })}
         {isLoading && (
-          <div className="flex justify-start">
-              <div className="max-w-[75%] p-4 rounded-2xl bg-white/50 dark:bg-zinc-800/50 text-zinc-500 rounded-tl-none border border-zinc-200/50 dark:border-zinc-700/50 flex items-center gap-3">
-                <Loader2 size={14} className="animate-spin" />
-                <span className="text-xs font-medium tracking-tight">Thinking...</span>
-              </div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
+            <div className="p-3.5 rounded-2xl rounded-tl-md bg-white/60 dark:bg-zinc-800/60 border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm backdrop-blur-sm flex items-center gap-1.5">
+              {[0, 0.2, 0.4].map((delay, idx) => (
+                <motion.div
+                  key={idx}
+                  animate={shouldReduceMotion ? {} : { opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+                  transition={shouldReduceMotion ? {} : { repeat: Infinity, duration: 1.2, delay, ease: [0.23, 1, 0.32, 1] }}
+                  className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500"
+                />
+              ))}
+            </div>
+          </motion.div>
         )}
         {error && !isLoading && (
           <div className="flex justify-start">
-            <div className="max-w-[75%] p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-tl-none border border-rose-200/50 dark:border-rose-800/50 text-xs font-medium">
+            <div className="max-w-[75%] p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-tl-md border border-rose-200/50 dark:border-rose-800/50 text-xs font-medium">
               An error occurred while thinking.
             </div>
           </div>
@@ -176,18 +198,23 @@ export function AIChat() {
 
       <div className="p-4 bg-zinc-100/50 dark:bg-zinc-800/50 border-t border-zinc-200/50 dark:border-zinc-700/50">
         <form onSubmit={handleSubmit} className="flex flex-row gap-2 relative group/input">
+          <label htmlFor="ai-chat-input" className="sr-only">Ask your AI assistant a question</label>
           <input
+            id="ai-chat-input"
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask your mind..."
-            className="flex-1 w-full pl-4 pr-12 py-3 bg-white dark:bg-zinc-900 border-none rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-400 text-sm shadow-sm transition-all"
+            placeholder="Ask your mind…"
+            className="flex-1 w-full pl-4 pr-12 py-3 bg-white dark:bg-zinc-900 border-none rounded-xl focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 text-sm shadow-sm transition-shadow"
             disabled={isLoading}
+            autoComplete="off"
+            spellCheck={false}
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
             className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 transition-all duration-150 hover:scale-[1.02] active:scale-[0.97] disabled:opacity-30 disabled:hover:scale-100"
+            aria-label="Send message"
           >
             <Send size={14} />
           </button>

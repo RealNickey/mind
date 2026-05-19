@@ -23,7 +23,7 @@ Icons: Lucide React or Tabler Icons
 Maps: Leaflet.js + react-leaflet (for place visualization)
 Backend
 Database: Supabase PostgreSQL (with vector extension + full-text search)
-ORM: Prisma (type-safe, migrations, relations)
+ORM: Supabase (Postgres + pgvector, migrations)
 LLM APIs:
 Groq (sub-second inference, free tier)
 Ollama local (for privacy-first, can run locally)
@@ -74,31 +74,31 @@ Applies to cards and backgrounds
 Define Framer Motion animation presets (spring physics, smooth scroll)
 Create accessible color contrast system
 Phase 2: Core Infrastructure & Database (Foundation)
-Files to create/modify:
+/Files to create/modify:
 
-/app/lib/db.ts - Prisma client + utilities
+/app/lib/db.ts - Supabase client + utilities
 /app/lib/vectors.ts - Embedding functions
 /scripts/setup-db.sql - Database schema with pgvector
 /app/api/health.ts - Health check endpoint
-Environment variables: DATABASE_URL, GROQ_API_KEY, TMDB_API_KEY
+Environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY, TMDB_API_KEY
 Tasks:
 
-Set up Supabase project and get DATABASE_URL
-Create Prisma schema with tables:
+Set up Supabase project and get Supabase URL and keys (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY)
+Create DB schema in Supabase with tables:
 items (id, title, description, content, type, tags, createdAt, updatedAt, userId)
 item_metadata (itemId, sourceUrl, imageUrl, preview, customData as JSON)
 embeddings (itemId, embedding vector, model_version)
 tags (id, name, userId, color, count)
 collections (id, name, description, userId, isAuto)
-Run migrations and set up pgvector extension
-Create Prisma seed script for demo data
+Run migrations and ensure pgvector extension is enabled in Supabase
+Create seed script for demo data (SQL or Supabase import)
 Phase 2: Authentication & User Management
 Files to create/modify:
 
 /app/middleware.ts - Auth middleware
 /app/api/auth/* - Auth routes (if using custom auth)
 /app/lib/auth.ts - Auth utilities
-Update Prisma schema to include User model with items relationship
+Ensure Supabase schema includes User model with items relationship
 Tasks:
 
 Integrate NextAuth.js or Auth.js (v5) for authentication
@@ -478,7 +478,7 @@ Backups: Automatic database backups
 Mobile Native App: React Native version (future)
 API: Public API for third-party integrations
 Webhooks: Trigger actions on external events
-Database Schema (Prisma)
+Database Schema (Proposed)
 model User {
   id String @id @default(cuid())
   email String @unique
@@ -709,7 +709,7 @@ Local embeddings first	Privacy, speed, offline capability; Groq API as fallback
 dream-masonry grid	Virtualization handles 10k+ items, better UX than alternatives
 Hybrid masonry + canvas	Flexibility: masonry for browsing, canvas for relationship mapping
 Color Thief v3.0+	Recently updated, OKLCH support, semantic swatches, high-quality output
-Prisma ORM	Type safety, migrations, excellent DX, perfect for complex schemas
+ORM / Tooling	Supabase SQL & migrations (pgvector)
 Rich theme system	next-themes for smooth transitions, custom CSS variables for branding
 Success Criteria
 MVP (Core Features)

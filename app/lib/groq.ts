@@ -3,7 +3,7 @@
  */
 
 // If Groq embeddings endpoint is used, it often defaults to nomic-embed-text-v1_5
-// which produces 768 dimensions. We truncate to 384 to match Prisma vector(384).
+// which produces 768 dimensions. We truncate to 384 to match pgvector(384).
 export async function generateGroqEmbedding(text: string): Promise<number[]> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {

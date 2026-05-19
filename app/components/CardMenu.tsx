@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Copy, Edit2, LayoutTemplate, Trash2, FolderSync, Sparkles } from "lucide-react";
+import { Copy, Edit2, Trash2, FolderSync } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Item {
@@ -33,12 +33,12 @@ export default function CardMenu({ item, onClose, onInspectAI, onEdit, onDelete 
   return (
     <motion.div
       ref={menuRef}
-      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+      initial={{ opacity: 0, scale: 0.97, y: -6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+      exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
       className="absolute right-0 top-10 z-50 w-52 rounded-2xl border border-white/20 dark:border-zinc-800/20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl p-1.5 text-[10px] font-bold uppercase tracking-widest shadow-2xl ring-1 ring-black/5 dark:ring-white/5"
-      style={{ transformOrigin: "top right" }}
+      style={{ transformOrigin: 'top right' }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-0.5">
@@ -62,20 +62,6 @@ export default function CardMenu({ item, onClose, onInspectAI, onEdit, onDelete 
           onClick={() => onClose()}
           icon={<FolderSync size={14} />}
           label="Add to Collection"
-        />
-        <MenuButton
-          onClick={() => onClose()}
-          icon={<LayoutTemplate size={14} />}
-          label="View in Canvas"
-        />
-        <MenuButton
-          onClick={() => {
-            onInspectAI?.();
-            onClose();
-          }}
-          icon={<Sparkles size={14} />}
-          label="AI Insights"
-          className="text-amber-600 dark:text-amber-400"
         />
         <div className="my-1 h-px bg-zinc-200/50 dark:bg-zinc-800/50 mx-2" />
         <MenuButton

@@ -20,6 +20,11 @@ interface InfiniteCanvasProps {
 
 export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: InfiniteCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Layout items in a grid
   const { W, H, positionedItems } = useMemo(() => {
@@ -34,7 +39,11 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
       origX: (i % cols) * (CARD_WIDTH + GAP) + GAP / 2,
       origY: Math.floor(i / cols) * (ROW_HEIGHT + GAP) + GAP / 2,
     }));
-    return { W: Math.max(W, window.innerWidth), H: Math.max(H, window.innerHeight), positionedItems: positioned };
+    
+    const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const viewportH = typeof window !== 'undefined' ? window.innerHeight : 1080;
+    
+    return { W: Math.max(W, viewportW), H: Math.max(H, viewportH), positionedItems: positioned };
   }, [items]);
 
   const [{ x, y, zoom }, api] = useSpring(() => ({
@@ -71,6 +80,14 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
     eventOptions: { passive: false },
     drag: { from: () => [x.get(), y.get()] }
   });
+
+  if (!isClient) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-zinc-50 dark:bg-[#09090b]">
+        {/* Static fallback or loader for SSR */}
+      </div>
+    );
+  }
 
   return (
     <div 

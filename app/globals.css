@@ -48,3 +48,68 @@
 html, body {
   height: 100%;
 }
+
+/* Scrollbar utilities */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* Mask utilities for overflow fadeout */
+.mask-fade-right {
+  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+}
+
+.mask-fade-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
+/* Suppress mobile tap highlight */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .motion-allowed {
+    animation-duration: revert !important;
+    transition-duration: revert !important;
+  }
+}
+
+/* Touch device hover guard */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+}
+
+@media (hover: none) {
+  .hover-lift,
+  .hover-scale {
+    transform: none;
+  }
+}

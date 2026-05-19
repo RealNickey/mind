@@ -3,47 +3,41 @@ import PreviewImage from './PreviewImage';
 
 export default function MusicPreview({ title, artist, album, cover, year }: { title: string, artist: string, album?: string, cover: string, year?: string }) {
   return (
-    <div className="flex bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-xl overflow-hidden shadow-2xl border border-white/10 group relative p-4 pl-6">
-      <div className="relative w-28 h-28 sm:w-36 sm:h-36 shrink-0 mt-2">
-        {/* Vinyl Record */}
-        <div className="absolute inset-0 bg-[#0f0f0f] rounded-full shadow-[0_0_10px_rgba(0,0,0,0.8),inset_0_0_0_1px_rgba(255,255,255,0.1),inset_0_0_20px_rgba(255,255,255,0.05)] translate-x-12 group-hover:translate-x-16 transition-transform duration-700 ease-out flex items-center justify-center before:content-[''] before:absolute before:inset-2 before:rounded-full before:border before:border-white/5 after:content-[''] after:absolute after:inset-4 after:rounded-full after:border after:border-white/5">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 to-red-900 border border-white/20 flex items-center justify-center z-10">
-            <div className="w-1.5 h-1.5 bg-black rounded-full" />
-          </div>
-          {/* Vinyl grooves */}
-          <div className="absolute inset-1 rounded-full border border-white/5" />
-          <div className="absolute inset-3 rounded-full border border-white/5" />
-          <div className="absolute inset-6 rounded-full border border-white/5" />
-          <div className="absolute inset-8 rounded-full border border-white/5" />
-        </div>
-        
-        {/* Album Cover */}
-        <div className="absolute inset-0 shadow-[-5px_0_15px_rgba(0,0,0,0.5)] rounded-sm overflow-hidden z-20 border border-white/10 bg-black">
-          <PreviewImage
-            src={cover}
-            alt={title}
-            fill
-            sizes="(max-width: 768px) 112px, 144px"
-            className="w-full h-full object-cover"
-          />
-          {/* Cover gloss */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-          
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-            <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-black shadow-lg hover:scale-110 transition-transform cursor-pointer">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><path d="M8 5v14l11-7z"/></svg>
-            </div>
-          </div>
+    <div className="relative aspect-square w-full overflow-visible group perspective-[1000px] p-2">
+      {/* Vinyl Record */}
+      <div className="absolute top-[5%] right-[-15%] bottom-[5%] aspect-square h-[90%] bg-[#111] rounded-full shadow-2xl transition-transform duration-500 ease-out group-hover:translate-x-[20%] translate-x-[5%] flex items-center justify-center border border-white/10 z-0">
+        {/* Grooves */}
+        <div className="absolute inset-[2%] rounded-full border border-white/5" />
+        <div className="absolute inset-[5%] rounded-full border border-white/5" />
+        <div className="absolute inset-[15%] rounded-full border border-white/5" />
+        <div className="absolute inset-[25%] rounded-full border border-white/5" />
+        <div className="absolute inset-[35%] rounded-full border border-white/5" />
+        {/* Label */}
+        <div className="w-[30%] h-[30%] rounded-full bg-gradient-to-br from-blue-400 to-emerald-400 flex items-center justify-center">
+            <div className="w-[10%] h-[10%] bg-[#111] rounded-full border border-black/20" />
         </div>
       </div>
-      
-      <div className="pl-20 py-2 flex flex-col justify-center overflow-hidden z-10 flex-1">
-        <h3 className="text-white font-bold text-lg leading-tight truncate drop-shadow-md">{title}</h3>
-        <p className="text-gray-300 text-sm truncate mt-1">{artist}</p>
-        <div className="flex items-center gap-2 mt-3 text-[10px] text-gray-500 uppercase tracking-widest font-semibold truncate">
-          {album && <span className="truncate">{album}</span>}
-          {album && year && <span>•</span>}
-          {year && <span>{year}</span>}
+
+      {/* Album Cover */}
+      <div className="absolute inset-2 bg-zinc-900 rounded shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden z-10 border border-white/10">
+        <PreviewImage
+          src={cover}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 100vw, 300px"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-white/5 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] z-20">
+          <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-black shadow-lg hover:scale-110 transition-transform cursor-pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
+          <h3 className="text-white font-bold text-sm leading-tight truncate">{title}</h3>
+          <p className="text-gray-300 text-xs truncate mt-0.5">{artist}</p>
         </div>
       </div>
     </div>

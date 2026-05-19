@@ -34,7 +34,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
               });
             }).catch(console.error);
         } else {
-          chrome.tabs.create({ url: 'http://localhost:3000/dashboard' }); // to prompt login theoretically
+          chrome.tabs.create({ url: 'http://localhost:3000/' }); // to prompt login theoretically
         }
       });
     }

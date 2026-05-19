@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { AlertTriangle, GitMerge, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, GitMerge, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import {
   getItemSuggestions,
   refreshItemLinkHealth,

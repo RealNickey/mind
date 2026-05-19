@@ -61,7 +61,7 @@ export interface DeleteItemResponse {
   success: boolean;
 }
 
-// Ensure the types for Prisma Database returns and OpenAI metadata
+// Ensure the types for database returns and OpenAI metadata
 export interface ItemMetadata {
   id?: string;
   itemId?: string;
