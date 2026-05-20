@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:extension": "node chrome-extension/build.mjs",
+    "watch:extension": "node chrome-extension/build.mjs --watch"
   },
   "dependencies": {
     "@ai-sdk/cohere": "^3.0.30",
@@ -69,6 +71,7 @@
     "@types/react-dom": "^19",
     "@types/react-window": "^1.8.8",
     "@types/three": "^0.184.0",
+    "esbuild": "^0.24.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
