@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Pencil, Trash2, Download, Share2, Circle } from "lucide-react";
+import { X, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import ItemPreview from "./previews/ItemPreview";
-import { ReadingModeTTS } from "./ReadingModeTTS";
 import { ImageAnalysis } from "./ImageAnalysis";
 import PlaceMap from "./PlaceMap";
 import { SpotifyModalUI } from "./SpotifyModalUI";
@@ -75,7 +74,6 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [isTagging, setIsTagging] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -104,6 +102,15 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
       setTags(item.tags || []);
     }
   }, [item]);
+
+  const tldrRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (tldrRef.current) {
+      tldrRef.current.style.height = "auto";
+      tldrRef.current.style.height = `${tldrRef.current.scrollHeight}px`;
+    }
+  }, [description]);
 
   if (!item) return null;
 
@@ -179,22 +186,7 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
     }
   };
 
-  const handleDownload = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(item, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `${item.title || 'item'}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
 
-  const handleShare = () => {
-    const url = `${window.location.origin}/items/${item.id}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <AnimatePresence>
@@ -229,29 +221,20 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                 <ItemPreview item={item} />
               </div>
 
-              {/* Floating metadata badges / color dots & Same Vibe */}
+              {/* Floating metadata badges / color dots */}
               <div className="absolute top-6 left-6 z-10">
                 <span className="bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 px-3.5 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shadow-md border border-white/10 dark:border-black/10">
                   {item.type}
                 </span>
               </div>
 
-              <div className="absolute bottom-6 left-6 z-10 flex items-center gap-3">
-                {dominantColors && dominantColors.length > 0 && (
-                  <div className="flex items-center gap-1 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-lg">
-                    {dominantColors.slice(0, 5).map((color) => (
-                      <div key={color} className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color }} />
-                    ))}
-                  </div>
-                )}
-                
-                <button className="flex items-center gap-1.5 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl px-4 py-2 rounded-full border border-black/5 dark:border-white/10 text-xs font-semibold text-zinc-800 dark:text-zinc-200 shadow-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors active:scale-[0.98]">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                  <span>Same Vibe</span>
-                </button>
-              </div>
+              {dominantColors && dominantColors.length > 0 && (
+                <div className="absolute bottom-6 left-6 z-10 flex items-center gap-1 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-black/5 dark:border-white/10 shadow-lg">
+                  {dominantColors.slice(0, 5).map((color) => (
+                    <div key={color} className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Right Column: detailed metadata editor */}
@@ -285,7 +268,8 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                     <div className="space-y-2">
                       <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">TLDR</div>
                       <textarea
-                        className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none font-sans"
+                        ref={tldrRef}
+                        className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none overflow-hidden font-sans"
                         placeholder="Add a summary..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
@@ -356,31 +340,6 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
               {/* Footer controls */}
               <div className="p-4 border-t border-zinc-200/50 dark:border-zinc-800/50 bg-white/50 dark:bg-zinc-950/40 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
-                  <button 
-                    onClick={handleDownload}
-                    className="p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors active:scale-[0.95]"
-                    title="Export as JSON"
-                  >
-                    <Download className="h-4.5 w-4.5" />
-                  </button>
-                  <button 
-                    className="p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-100 transition-colors active:scale-[0.95]"
-                    title="Metadata settings"
-                  >
-                    <Circle className="h-4.5 w-4.5" />
-                  </button>
-                  <button 
-                    onClick={handleShare}
-                    className="p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-100 transition-colors active:scale-[0.95] relative"
-                    title="Share item link"
-                  >
-                    <Share2 className="h-4.5 w-4.5" />
-                    {copied && (
-                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-[9px] px-2 py-0.5 rounded shadow-md whitespace-nowrap animate-fade-in">
-                        Copied!
-                      </span>
-                    )}
-                  </button>
                   {sourceUrl && (
                     <a
                       href={sourceUrl}
@@ -391,11 +350,6 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                     >
                       <ExternalLink className="h-4.5 w-4.5" />
                     </a>
-                  )}
-                  {textForReading && (
-                    <div className="scale-75 origin-left">
-                      <ReadingModeTTS text={textForReading} title={item.title} />
-                    </div>
                   )}
                 </div>
 

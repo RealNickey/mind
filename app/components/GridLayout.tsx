@@ -192,7 +192,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Top Header / floating capsule */}
       <div className="sticky top-6 z-40 mx-auto w-[calc(100%-2rem)] max-w-5xl">
         <div className="glass-panel px-6 py-3 flex items-center justify-between gap-4 rounded-full shadow-lg border border-white/20 dark:border-white/5 bg-white/30 dark:bg-zinc-900/30 backdrop-blur-xl">

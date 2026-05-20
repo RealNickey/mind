@@ -4,7 +4,6 @@ import { ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
 import ItemPreview from '@/app/components/previews/ItemPreview';
 import { LinkedItemsPanel } from '@/app/components/LinkedItemsPanel';
 import { ItemInsightsPanel } from '@/app/components/ItemInsightsPanel';
-import { ReadingModeTTS } from '@/app/components/ReadingModeTTS';
 import { ImageAnalysis } from '@/app/components/ImageAnalysis';
 import PlaceMap from '@/app/components/PlaceMap';
 import { getItemByIdWithRelations } from '@/app/lib/item-hydration';
@@ -112,7 +111,7 @@ export default async function ItemDetailPage({
   const imageAnalysisUrl = asString(item.metadata?.imageUrl) ?? null;
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -154,7 +153,6 @@ export default async function ItemDetailPage({
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Notes and Content</h2>
-                {textForReading && <ReadingModeTTS text={textForReading} title={item.title} />}
               </div>
               <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
                 {item.content || item.description || 'No additional notes saved yet.'}

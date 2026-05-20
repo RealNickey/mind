@@ -40,7 +40,7 @@ export default function RootLayout({
       <head>
         <meta name="theme-color" content="#09090b" />
       </head>
-      <body className="min-h-screen flex flex-col relative bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 antialiased selection:bg-blue-500/30 selection:text-blue-200" style={{ touchAction: 'manipulation', overscrollBehavior: 'contain' }}>
+      <body className="min-h-screen flex flex-col relative bg-background text-foreground antialiased selection:bg-blue-500/30 selection:text-blue-200" style={{ touchAction: 'manipulation', overscrollBehavior: 'contain' }}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <FilmGrainEffect />

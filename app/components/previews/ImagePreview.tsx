@@ -10,7 +10,7 @@ export default function ImagePreview({ url, alt, dimensions, colors }: { url: st
         width={dimensions?.w ?? 1200}
         height={dimensions?.h ?? 900}
         sizes="(max-width: 768px) 100vw, 40vw"
-        className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-in-out"
+        className="w-full h-auto object-cover"
       />
       
       {colors && colors.length > 0 && (

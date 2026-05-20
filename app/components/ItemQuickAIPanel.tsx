@@ -6,7 +6,6 @@ import { Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ItemCardItem } from './ItemCard';
 import { ItemInsightsPanel } from './ItemInsightsPanel';
-import { ReadingModeTTS } from './ReadingModeTTS';
 
 type LinkHealthStatus = 'alive' | 'broken' | 'unknown';
 
@@ -174,19 +173,6 @@ export function ItemQuickAIPanel({ item, isOpen, onClose }: ItemQuickAIPanelProp
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-          {textForReading ? (
-            <section className="space-y-4">
-              <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Reading Mode</h4>
-              <div className="p-4 rounded-xl bg-white/40 dark:bg-zinc-800/40 border border-white/20 dark:border-zinc-700/20 ring-1 ring-black/5 dark:ring-white/5">
-                <ReadingModeTTS text={textForReading} title={item.title} />
-              </div>
-            </section>
-          ) : (
-            <section className="p-6 rounded-xl bg-zinc-100/50 dark:bg-zinc-800/50 text-xs font-medium text-zinc-400 text-center border border-dashed border-zinc-200 dark:border-zinc-800">
-              No readable content available.
-            </section>
-          )}
-
           <div className="space-y-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Insights & Health</h4>
             <ItemInsightsPanel

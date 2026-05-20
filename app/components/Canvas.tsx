@@ -99,7 +99,7 @@ export default function Canvas({ initialItems, onInspectAI }: CanvasProps) {
 
   return (
     <div 
-      className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing bg-zinc-50 dark:bg-zinc-950 relative"
+      className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing bg-background relative"
       ref={canvasRef}
       onWheel={handleWheel}
       onPointerDown={() => setIsPanning(true)}
