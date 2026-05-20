@@ -31,6 +31,7 @@ export interface ItemCardItem {
 
 interface ItemCardProps {
   item: ItemCardItem;
+  index?: number;
   onExpand?: (item: ItemCardItem) => void;
   onEdit?: (item: ItemCardItem) => void;
   onDelete?: (item: ItemCardItem) => void;
@@ -38,7 +39,7 @@ interface ItemCardProps {
   onInspectAI?: (item: ItemCardItem) => void;
 }
 
-export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
+export default function ItemCard({ item, index = 0, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -53,12 +54,16 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
         <motion.div
           layout
           layoutId={`item-${item.id}`}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          className="group relative flex flex-col overflow-hidden rounded-xl bg-white/40 dark:bg-zinc-900/40 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5 cursor-pointer"
+          whileHover={{ y: -4, scale: 1.025 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{
+            opacity: { duration: 0.25, ease: [0.23, 1, 0.32, 1], delay: Math.min(index * 0.05, 0.4) },
+            y: { type: "spring", stiffness: 350, damping: 25 },
+            scale: { type: "spring", stiffness: 400, damping: 20 }
+          }}
+          className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel shadow-sm cursor-pointer border border-white/20 dark:border-white/5"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => onExpand?.(item)}
@@ -67,24 +72,9 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
             <ItemPreview item={item} />
           </div>
 
-          <div className="flex flex-col flex-1 border-t border-zinc-200/40 bg-white/20 p-4 backdrop-blur-md dark:border-zinc-800/40 dark:bg-black/10">
-            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-600 dark:text-zinc-400">
-              <span className="rounded px-1.5 py-0.5 bg-zinc-200/50 dark:bg-zinc-800/50">{item.type}</span>
-              <span>{formattedDate}</span>
-            </div>
-
-            {item.tags && item.tags.length > 0 && (
-              <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="rounded-md bg-zinc-100/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200/30 dark:border-zinc-700/30 transition-colors duration-150"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center justify-between px-4 py-3 text-[10px] tracking-wide text-muted-foreground bg-foreground/[0.01] backdrop-blur-sm border-t border-foreground/[0.03]">
+            <span className="font-semibold lowercase italic opacity-85">{item.type}</span>
+            <span className="opacity-60">{formattedDate}</span>
           </div>
 
           {/* Hover Actions */}

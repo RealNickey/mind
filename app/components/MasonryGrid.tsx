@@ -22,27 +22,27 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
   }, []);
 
   const breakpointColumnsObj = {
-    default: 5,
-    1536: 4,
-    1280: 3,
-    1024: 3,
-    768: 2,
+    default: 3,
+    1536: 3,
+    1280: 2,
+    1024: 2,
+    768: 1,
     640: 1,
   };
 
   if (!isClient) {
-    return <div className="flex w-auto pb-24 -ml-6" />;
+    return <div className="flex w-auto pb-24 -ml-8" />;
   }
 
   return (
     <Masonry
       breakpointCols={breakpointColumnsObj}
-      className="flex w-auto pb-24 -ml-6"
-      columnClassName="pl-6 bg-clip-padding"
+      className="flex w-auto pb-24 -ml-8"
+      columnClassName="pl-8 bg-clip-padding"
     >
-      <div className="mb-6">
+      <div className="mb-8">
         <div 
-          className="group relative flex flex-col justify-center items-center overflow-hidden rounded-xl bg-white/40 dark:bg-zinc-900/40 border border-dashed border-zinc-200/80 dark:border-zinc-700/60 p-8 h-[220px] text-center transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-white/60 dark:hover:bg-zinc-800/60 backdrop-blur-sm shadow-sm ring-1 ring-black/5 dark:ring-white/5 active:scale-[0.99] active:shadow-sm"
+          className="group relative flex flex-col justify-center items-center overflow-hidden rounded-2xl bg-white/30 dark:bg-zinc-900/30 border border-dashed border-zinc-200/80 dark:border-zinc-800/80 p-8 h-[240px] text-center transition-all duration-200 hover:border-primary/40 dark:hover:border-primary/40 hover:bg-white/50 dark:hover:bg-zinc-900/50 backdrop-blur-xl shadow-sm active:scale-[0.99]"
           role="textbox"
           aria-label="Paste or type to add a new item"
           tabIndex={0}
@@ -63,13 +63,13 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
           }}
         >
           <div className="pointer-events-none flex flex-col items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-zinc-100/80 dark:bg-zinc-800/80 flex items-center justify-center transition-transform duration-150 group-hover:scale-110">
+            <div className="w-10 h-10 rounded-full bg-zinc-100/80 dark:bg-zinc-850/80 flex items-center justify-center transition-transform duration-150 group-hover:scale-110 border border-zinc-200/40 dark:border-zinc-800/40">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 group-hover:text-zinc-500 transition-colors duration-150" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </div>
-            <span className="text-zinc-500 dark:text-zinc-400 font-semibold text-sm font-heading">Add a thought…</span>
+            <span className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm font-heading">Add a thought…</span>
             <div className="flex items-center gap-1.5 bg-zinc-100/70 dark:bg-zinc-800/70 text-zinc-500 dark:text-zinc-400 text-[10px] px-2.5 py-1 rounded-md font-mono shadow-sm border border-zinc-200/50 dark:border-zinc-700/50">
               <kbd className="font-bold border border-current rounded px-1 py-0.5 bg-white/50 dark:bg-black/20 text-[9px]">Ctrl+V</kbd>
               <span>paste instantly</span>
@@ -99,10 +99,11 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
         </div>
       </div>
 
-      {items.map((item) => (
-        <div key={item.id} className="mb-6">
+      {items.map((item, index) => (
+        <div key={item.id} className="mb-8">
           <ItemCard
             item={item}
+            index={index}
             onExpand={onExpand}
             onEdit={onEdit}
             onDelete={onDelete}
