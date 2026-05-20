@@ -217,8 +217,30 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
 
             {/* Left Column: theater mode media view */}
             <div className="flex-1 relative bg-zinc-50 dark:bg-zinc-900/30 flex items-center justify-center p-8 overflow-hidden min-h-[300px] md:min-h-0 min-w-0">
-              <div className="w-full h-full max-h-[500px] flex items-center justify-center [&_img]:max-h-[500px] [&_img]:w-auto [&_img]:object-contain overflow-hidden rounded-2xl">
-                <ItemPreview item={item} />
+              <div className={`w-full h-full flex items-center justify-center overflow-hidden rounded-2xl ${item.type.toLowerCase() === 'link' || item.type.toLowerCase() === 'pdf' ? '' : 'max-h-[500px] [&_img]:max-h-[500px] [&_img]:w-auto [&_img]:object-contain'}`}>
+                {item.type.toLowerCase() === 'link' && sourceUrl ? (
+                  <iframe
+                    src={sourceUrl}
+                    className="w-full h-full bg-white border-0"
+                    sandbox="allow-same-origin allow-scripts"
+                    title={item.title}
+                  />
+                ) : item.type.toLowerCase() === 'pdf' && sourceUrl ? (
+                  <iframe
+                    src={sourceUrl}
+                    className="w-full h-full bg-white border-0"
+                    title={item.title}
+                  />
+                ) : item.type.toLowerCase() === 'article' && item.content ? (
+                  <div className="w-full h-full bg-[#fdfdfc] dark:bg-zinc-900 overflow-y-auto p-12 custom-scrollbar">
+                    <article className="prose prose-zinc dark:prose-invert prose-lg mx-auto max-w-2xl font-serif">
+                      <h1 className="font-heading mb-8">{item.title}</h1>
+                      <div dangerouslySetInnerHTML={{ __html: item.content }} />
+                    </article>
+                  </div>
+                ) : (
+                  <ItemPreview item={item} />
+                )}
               </div>
 
               {/* Floating metadata badges / color dots */}

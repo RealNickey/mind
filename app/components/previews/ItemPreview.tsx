@@ -14,6 +14,10 @@ import PlacePreview from './PlacePreview';
 import ProductPreview from './ProductPreview';
 import QuotePreview from './QuotePreview';
 import RecipePreview from './RecipePreview';
+import PdfPreview from './PdfPreview';
+import PropertyPreview from './PropertyPreview';
+import WikipediaPreview from './WikipediaPreview';
+import HighlightPreview from './HighlightPreview';
 import TodoPreview, { type TodoItem } from './TodoPreview';
 import TVShowPreview from './TVShowPreview';
 import TwitterPreview from './TwitterPreview';
@@ -244,6 +248,49 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
           domain={sourceDomain}
           thumbnail={imageUrl ?? undefined}
           readingTime={metadata?.readingTime ? `${metadata.readingTime} min read` : undefined}
+        />
+      );
+    }
+
+    case 'pdf': {
+      return (
+        <PdfPreview
+          title={item.title}
+          pages={asNumber(customData?.pages)}
+          fileSize={asString(customData?.fileSize)}
+        />
+      );
+    }
+
+    case 'property': {
+      return (
+        <PropertyPreview
+          title={item.title}
+          price={asString(customData?.price)}
+          imageUrl={imageUrl ?? undefined}
+          beds={asNumber(customData?.beds)}
+          baths={asNumber(customData?.baths)}
+          sqft={asNumber(customData?.sqft)}
+        />
+      );
+    }
+
+    case 'wikipedia': {
+      return (
+        <WikipediaPreview
+          title={item.title}
+          excerpt={item.description ?? item.content ?? 'Wikipedia article'}
+          imageUrl={imageUrl ?? undefined}
+        />
+      );
+    }
+
+    case 'highlight': {
+      return (
+        <HighlightPreview
+          text={item.content ?? item.description ?? 'Saved highlight'}
+          sourceTitle={asString(customData?.sourceTitle) ?? getDisplayDomain(sourceUrl) ?? undefined}
+          sourceUrl={sourceUrl ?? undefined}
         />
       );
     }

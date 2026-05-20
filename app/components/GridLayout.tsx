@@ -298,6 +298,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                 onCanvas={handleCanvas}
                 onInspectAI={handleInspectAI}
                 onPaste={handlePaste}
+                isPasting={addPastedItemMutation.isPending}
               />
             )}
 

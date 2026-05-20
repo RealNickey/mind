@@ -14,11 +14,14 @@ interface MasonryGridProps {
   onCanvas?: (item: Item) => void;
   onInspectAI?: (item: Item) => void;
   onPaste?: (text: string) => void;
+  isPasting?: boolean;
 }
 
-export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste }: MasonryGridProps) {
+export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste, isPasting }: MasonryGridProps) {
   const [isClient, setIsClient] = useState(false);
-  useEffect(() => { setIsClient(true); }, []);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const breakpointColumnsObj = {
     default: 4,
@@ -39,6 +42,27 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
       className="flex w-auto pb-24 -ml-5"
       columnClassName="pl-5 bg-clip-padding"
     >
+      {isPasting && (
+        <div className="mb-5">
+          <div
+            className="flex flex-col overflow-hidden animate-pulse h-[200px]"
+            style={{
+              borderRadius: '12px',
+              backgroundColor: 'rgba(255,255,255,0.4)',
+              backdropFilter: 'blur(24px) saturate(180%)',
+              border: `1.5px solid rgba(255,255,255,0.3)`,
+              boxShadow: '0 4px 24px -8px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div className="flex-1 bg-zinc-200/50 dark:bg-zinc-800/50 w-full h-full" />
+            <div className="p-4 space-y-3 bg-white/30 dark:bg-zinc-900/30">
+              <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+              <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-1/2" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add new item card */}
       <div className="mb-5">
         <div
