@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Copy, Edit2, Expand, MoreHorizontal, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import CardMenu from "./CardMenu";
+import { Copy, Edit2, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import {
   ContextMenu,
@@ -31,6 +29,7 @@ export interface ItemCardItem {
 
 interface ItemCardProps {
   item: ItemCardItem;
+  index?: number;
   onExpand?: (item: ItemCardItem) => void;
   onEdit?: (item: ItemCardItem) => void;
   onDelete?: (item: ItemCardItem) => void;
@@ -38,14 +37,68 @@ interface ItemCardProps {
   onInspectAI?: (item: ItemCardItem) => void;
 }
 
-export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
+// Each card type gets a distinct border-radius personality
+function getCardShape(type: string): string {
+  const t = type.toLowerCase();
+  switch (t) {
+    case 'note':       return '12px 20px 12px 20px'; // asymmetric, soft
+    case 'movie':      return '4px 4px 4px 4px';      // sharp — cinematic frame
+    case 'music':      return '8px 8px 8px 8px';      // slight round — sleeve
+    case 'book':       return '4px 12px 4px 4px';     // slight right-round — spine feel
+    case 'article':    return '16px 4px 16px 4px';    // editorial rhythm
+    case 'link':       return '12px 12px 12px 12px';  // clean
+    case 'quote':      return '0px 20px 0px 20px';    // dramatic opposing
+    case 'image':      return '8px';                  // clean image mount
+    case 'github':     return '8px 8px 16px 8px';     // off-beat
+    case 'youtube':    return '8px';
+    case 'twitter':    return '16px';
+    case 'instagram':  return '12px 24px 12px 24px';
+    case 'place':      return '16px 8px 16px 8px';
+    case 'recipe':     return '20px 8px 20px 8px';
+    case 'todo':       return '8px 8px 8px 24px';     // clipped corner feel
+    case 'product':    return '12px';
+    case 'color':      return '20px';
+    case 'video':      return '8px';
+    default:           return '12px';
+  }
+}
+
+// Accent stripe color per type — shown as a subtle left border or top dot
+function getTypeAccent(type: string): string {
+  const t = type.toLowerCase();
+  switch (t) {
+    case 'note':       return '#ffc94b'; // golden
+    case 'movie':      return '#e84393'; // cinematic pink
+    case 'music':      return '#a855f7'; // violet
+    case 'book':       return '#10b981'; // emerald
+    case 'article':    return '#3b82f6'; // blue
+    case 'link':       return '#ffc94b'; // golden
+    case 'quote':      return '#f97316'; // orange
+    case 'github':     return '#8b949e'; // github grey
+    case 'youtube':    return '#ff0000'; // red
+    case 'twitter':    return '#1d9bf0'; // twitter blue
+    case 'instagram':  return '#e1306c'; // instagram pink
+    case 'place':      return '#22c55e'; // green
+    case 'recipe':     return '#f59e0b'; // amber
+    case 'todo':       return '#8b5cf6'; // purple
+    case 'product':    return '#06b6d4'; // cyan
+    case 'image':      return '#ec4899'; // pink
+    case 'color':      return '#fbbf24'; // amber
+    case 'video':      return '#ef4444'; // red
+    default:           return '#ffc94b';
+  }
+}
+
+export default function ItemCard({ item, index = 0, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const parsedDate = new Date(item.createdAt);
   const formattedDate = Number.isNaN(parsedDate.getTime())
     ? "Recently"
     : format(parsedDate, "MMM d, yyyy");
+
+  const shape = getCardShape(item.type);
+  const accent = getTypeAccent(item.type);
 
   return (
     <ContextMenu>
@@ -53,88 +106,42 @@ export default function ItemCard({ item, onExpand, onEdit, onDelete, onCanvas, o
         <motion.div
           layout
           layoutId={`item-${item.id}`}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          whileHover={{ y: -2 }}
           whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          className="group relative flex flex-col overflow-hidden rounded-xl bg-white/40 dark:bg-zinc-900/40 shadow-sm backdrop-blur-xl transition-shadow hover:shadow-md border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5 cursor-pointer"
+          transition={{
+            opacity: { duration: 0.25, ease: [0.23, 1, 0.32, 1], delay: Math.min(index * 0.045, 0.35) },
+            y: { type: "spring", stiffness: 380, damping: 28, delay: Math.min(index * 0.045, 0.35) },
+          }}
+          className={`item-card-glass group relative flex flex-col cursor-pointer ${item.type?.toLowerCase() === 'music' ? 'overflow-visible' : 'overflow-hidden'}`}
+          style={{
+            borderRadius: shape,
+            // Base: glass panel styling
+            backgroundColor: 'rgba(255,255,255,0.5)',
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            border: `1.5px solid rgba(255,255,255,0.3)`,
+            boxShadow: '0 4px 24px -8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)',
+            transition: 'border-color 220ms cubic-bezier(0.23,1,0.32,1), box-shadow 220ms cubic-bezier(0.23,1,0.32,1), transform 220ms cubic-bezier(0.23,1,0.32,1)',
+          }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => onExpand?.(item)}
+          // Hover: yellow accent border (tasteful, not jarring)
+          data-hovered={isHovered ? 'true' : undefined}
         >
-          <div className="pointer-events-none w-full object-cover">
-            <ItemPreview item={item} />
+          {/* Content */}
+          <div className="pointer-events-none w-full">
+            <ItemPreview item={item} isCard />
           </div>
-
-          <div className="flex flex-col flex-1 border-t border-zinc-200/40 bg-white/20 p-4 backdrop-blur-md dark:border-zinc-800/40 dark:bg-black/10">
-            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-600 dark:text-zinc-400">
-              <span className="rounded px-1.5 py-0.5 bg-zinc-200/50 dark:bg-zinc-800/50">{item.type}</span>
-              <span>{formattedDate}</span>
-            </div>
-
-            {item.tags && item.tags.length > 0 && (
-              <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="rounded-md bg-zinc-100/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200/30 dark:border-zinc-700/30 transition-colors duration-150"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Hover Actions */}
-          <AnimatePresence>
-            {(isHovered || menuOpen) && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.97, y: 4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
-                className="absolute top-2.5 right-2.5 flex gap-1 items-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl p-1 rounded-lg shadow-lg border border-zinc-200/50 dark:border-zinc-800/50 ring-1 ring-black/5 dark:ring-white/5"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onExpand?.(item); }}
-                      className="rounded-md p-1.5 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 transition-colors active:scale-[0.97] transition-transform"
-                      aria-label="Expand item"
-                    >
-                      <Expand size={14} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Expand</TooltipContent>
-                </Tooltip>
-                
-                <div className="relative">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-                    className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors active:scale-[0.97] transition-transform"
-                    aria-label="More options"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                  {menuOpen && (
-                    <CardMenu 
-                      item={item} 
-                      onClose={() => setMenuOpen(false)}
-                      onInspectAI={() => onInspectAI?.(item)}
-                      onEdit={() => onEdit?.(item)}
-                      onDelete={() => onDelete?.(item)}
-                    />
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
       </ContextMenuTrigger>
+
       <ContextMenuContent className="w-48">
+        <ContextMenuItem onClick={() => onExpand?.(item)}>
+          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          <span>Open</span>
+        </ContextMenuItem>
         <ContextMenuItem onClick={() => onEdit?.(item)}>
           <Edit2 className="mr-2 h-4 w-4" />
           <span>Edit</span>

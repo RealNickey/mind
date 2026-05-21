@@ -1,66 +1,74 @@
-import React from 'react';
+'use client';
+import React, { useState } from 'react';
 import PreviewImage from './PreviewImage';
 
 export default function MoviePreview({ title, poster, backdrop, rating, year, runtime, genres }: { title: string, poster: string, backdrop?: string, rating: number, year: string, runtime?: number, genres?: string[] }) {
+  const [imgError, setImgError] = useState(false);
+  
   return (
-    <div className="group relative overflow-hidden bg-[#111] shadow-2xl h-80 flex flex-col justify-between py-2 border-y-4 border-black">
-      {/* Top film holes */}
-      <div className="w-full h-4 flex justify-between px-2 gap-2 opacity-80 z-20">
-        {[...Array(12)].map((_, i) => (
-          <div key={`top-${i}`} className="w-3 h-4 bg-white/10 rounded-sm shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" />
-        ))}
-      </div>
-      
-      <div className="relative flex-1 mx-4 my-2 overflow-hidden rounded-md shadow-[0_0_20px_rgba(0,0,0,0.8)] bg-black border border-white/5">
-        {backdrop && (
-          <div className="absolute inset-0 opacity-50 mix-blend-overlay">
-            <PreviewImage
-              src={backdrop}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="h-full w-full object-cover blur-[2px] scale-105 group-hover:scale-110 transition-transform duration-1000"
-            />
+    <div className="group relative w-full overflow-hidden" style={{ aspectRatio: '2/3', minHeight: 280 }}>
+      {/* Poster image */}
+      <div className="absolute inset-0 bg-zinc-900">
+        {poster && !imgError ? (
+          <PreviewImage
+            src={poster}
+            alt={title}
+            fill
+            sizes="(max-width: 768px) 50vw, 280px"
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" className="opacity-40">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+              <line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/>
+              <line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/>
+              <line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/>
+              <line x1="17" y1="7" x2="22" y2="7"/>
+            </svg>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
-        
-        <div className="absolute inset-0 p-4 flex flex-col justify-end">
-          <div className="flex gap-4 items-end">
-            {poster && (
-              <div className="relative w-24 rounded-md shadow-[0_10px_20px_rgba(0,0,0,0.8)] border border-white/20 group-hover:-translate-y-2 transition-transform duration-500 overflow-hidden shrink-0">
-                <PreviewImage src={poster} alt={title} width={300} height={450} sizes="96px" className="w-full h-auto object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-              </div>
-            )}
-            <div className="flex flex-col gap-1.5 text-white pb-1">
-              <h3 className="text-xl font-bold font-playfair leading-tight drop-shadow-md tracking-wide">{title}</h3>
-              <div className="flex items-center gap-2 text-[11px] font-mono text-gray-300 uppercase tracking-wider backdrop-blur-sm bg-black/30 w-fit px-2 py-1 rounded border border-white/10">
-                <span className="text-yellow-400 font-bold flex items-center gap-1 drop-shadow">
-                  ★ {rating.toFixed(1)}
-                </span>
-                <span className="opacity-50">•</span>
-                <span>{year}</span>
-                {runtime && (
-                  <>
-                    <span className="opacity-50">•</span>
-                    <span>{Math.floor(runtime / 60)}H {runtime % 60}M</span>
-                  </>
-                )}
-              </div>
-              {genres && genres.length > 0 && (
-                <p className="text-xs text-gray-400 mt-1 line-clamp-1 italic">{genres.join(' • ')}</p>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Subtle film grain overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay" 
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")' }} 
+      />
+
+      {/* Bottom gradient + info */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       
-      {/* Bottom film holes */}
-      <div className="w-full h-4 flex justify-between px-2 gap-2 opacity-80 z-20">
-        {[...Array(12)].map((_, i) => (
-          <div key={`bottom-${i}`} className="w-3 h-4 bg-white/10 rounded-sm shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" />
-        ))}
+      {/* Rating badge - always visible */}
+      {rating > 0 && (
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-yellow-400/30 text-yellow-400 text-[11px] font-bold px-2 py-1 rounded-full shadow-lg">
+          <span style={{ fontSize: 10 }}>★</span>
+          <span>{rating.toFixed(1)}</span>
+        </div>
+      )}
+
+      {/* Year chip */}
+      <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-md border border-white/10 text-white/70 text-[10px] font-mono px-2 py-1 rounded-full">
+        {year}
+      </div>
+
+      {/* Info panel on hover */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out">
+        <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1" style={{ fontFamily: 'Georgia, serif' }}>
+          {title}
+        </h3>
+        <div className="flex items-center gap-2 flex-wrap mt-1">
+          {runtime && (
+            <span className="text-white/60 text-[10px] font-mono">
+              {Math.floor(runtime / 60)}h {runtime % 60}m
+            </span>
+          )}
+          {genres && genres.length > 0 && (
+            <span className="text-yellow-400/80 text-[10px] font-medium truncate max-w-[140px]">
+              {genres.slice(0, 2).join(' · ')}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

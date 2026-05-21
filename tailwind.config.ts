@@ -46,7 +46,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)"],
-        heading: ["var(--font-playfair)"],
+        heading: ["var(--font-eb-garamond)"],
+        playfair: ["var(--font-eb-garamond)"],
         accent: ["var(--font-caveat)"],
       },
       borderRadius: {

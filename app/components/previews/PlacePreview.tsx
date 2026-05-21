@@ -10,7 +10,7 @@ export default function PlacePreview({ name, address, rating, categories, static
           alt={`Map showing ${name}`}
           fill
           sizes="(max-width: 768px) 100vw, 33vw"
-          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+          className="w-full h-full object-cover"
         />
         
         {/* Map pin marker */}

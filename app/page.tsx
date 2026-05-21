@@ -59,11 +59,11 @@ export default async function Home() {
   const initialItems = await getInitialItems();
 
   if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950" />;
+    return <main className="min-h-screen bg-background" />;
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <main className="min-h-screen bg-background">
       <GridLayout initialItems={initialItems} pageSize={PAGE_SIZE} />
     </main>
   );

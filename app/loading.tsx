@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 export default function Loading() {
   return (
-    <div className="w-full h-full min-h-[50vh] flex items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-950">
+    <div className="w-full h-full min-h-[50vh] flex items-center justify-center p-8 bg-background">
       <div className="flex flex-col items-center gap-6 max-w-sm w-full mx-auto" aria-busy="true" aria-live="polite">
         <motion.div 
           className="flex space-x-2"

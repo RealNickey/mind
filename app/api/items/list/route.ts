@@ -9,8 +9,6 @@ const MAX_LIMIT = 500;
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(0).default(DEFAULT_LIMIT).transform((val) => Math.min(val || DEFAULT_LIMIT, MAX_LIMIT)),
   offset: z.coerce.number().int().min(0).default(0),
-  type: z.string().optional().nullable(),
-  tag: z.string().optional().nullable(),
   collectionId: z.string().optional().nullable(),
   q: z.string().optional().nullable(),
 });
@@ -36,35 +34,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { limit, offset, type, tag, collectionId, q: textQuery } = parseResult.data;
+    const { limit, offset, collectionId, q: textQuery } = parseResult.data;
 
     let filteredItemIds: string[] | null = null;
-
-    if (tag) {
-      const { data: matchingTags, error: tagError } = await db
-        .from('Tag')
-        .select('id')
-        .or(`id.eq.${tag},name.eq.${tag}`);
-
-      if (tagError) throw tagError;
-
-      const tagIds = (matchingTags ?? []).map((row) => row.id);
-      if (tagIds.length === 0) {
-        return NextResponse.json([]);
-      }
-
-      const { data: tagLinks, error: tagLinksError } = await db
-        .from('_ItemToTag')
-        .select('A')
-        .in('B', tagIds);
-
-      if (tagLinksError) throw tagLinksError;
-
-      filteredItemIds = unique((tagLinks ?? []).map((row) => row.A));
-      if (filteredItemIds.length === 0) {
-        return NextResponse.json([]);
-      }
-    }
 
     if (collectionId) {
       const { data: collectionLinks, error: collectionLinksError } = await db
@@ -90,10 +62,6 @@ export async function GET(req: NextRequest) {
     }
 
     let query = db.from('Item').select('*');
-
-    if (type) {
-      query = query.eq('type', type);
-    }
 
     if (textQuery && textQuery.trim()) {
       const safeQuery = textQuery.replace(/[,%()']/g, ' ').trim();

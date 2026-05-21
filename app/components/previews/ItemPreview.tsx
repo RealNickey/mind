@@ -225,7 +225,7 @@ function extractIngredients(content?: string | null): string[] {
     .slice(0, 12);
 }
 
-export default function ItemPreview({ item }: { item: PreviewItem }) {
+export default function ItemPreview({ item, isCard = false }: { item: PreviewItem; isCard?: boolean }) {
   const metadata = item.metadata ?? null;
   const customData = asObject(metadata?.customData);
 
@@ -401,6 +401,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
           album={asString(customData?.album)}
           cover={imageUrl ?? svgPlaceholder('Music')}
           year={asString(customData?.year) ?? getYear(metadata?.publishedDate)}
+          isCard={isCard}
         />
       );
     }
@@ -487,6 +488,7 @@ export default function ItemPreview({ item }: { item: PreviewItem }) {
           title={item.title}
           description={item.description ?? undefined}
           favicon={favicon ?? undefined}
+          ogImage={imageUrl ?? undefined}
         />
       );
     }

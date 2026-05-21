@@ -83,7 +83,7 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
 
   if (!isClient) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-zinc-50 dark:bg-[#09090b]">
+      <div className="w-full h-full flex items-center justify-center bg-background">
         {/* Static fallback or loader for SSR */}
       </div>
     );
@@ -92,7 +92,7 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full relative overflow-hidden bg-zinc-50 dark:bg-[#09090b] cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
+      className="w-full h-full relative overflow-hidden bg-background cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
       style={{
         backgroundImage: "var(--canvas-grid)",
         backgroundSize: '40px 40px'

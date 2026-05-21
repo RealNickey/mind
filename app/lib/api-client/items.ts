@@ -54,8 +54,6 @@ export interface ItemApiModel {
 export interface ListItemsParams {
   limit: number;
   offset: number;
-  type?: string;
-  tag?: string;
   collectionId?: string;
   q?: string;
   signal?: AbortSignal;
@@ -133,12 +131,6 @@ function buildListItemsQuery(params: Omit<ListItemsParams, 'signal'>): string {
     offset: String(params.offset),
   });
 
-  if (params.type) {
-    query.set('type', params.type);
-  }
-  if (params.tag) {
-    query.set('tag', params.tag);
-  }
   if (params.collectionId) {
     query.set('collectionId', params.collectionId);
   }
