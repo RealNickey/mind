@@ -59,6 +59,10 @@ function getCardShape(type: string): string {
     case 'product':    return '12px';
     case 'color':      return '20px';
     case 'video':      return '8px';
+    case 'pdf':        return '8px 16px 8px 16px';
+    case 'property':   return '12px';
+    case 'wikipedia':  return '4px';
+    case 'highlight':  return '0px 16px 0px 16px';
     default:           return '12px';
   }
 }
@@ -85,6 +89,10 @@ function getTypeAccent(type: string): string {
     case 'image':      return '#ec4899'; // pink
     case 'color':      return '#fbbf24'; // amber
     case 'video':      return '#ef4444'; // red
+    case 'pdf':        return '#ef4444'; // pdf red
+    case 'property':   return '#0284c7'; // blue
+    case 'wikipedia':  return '#000000'; // black
+    case 'highlight':  return '#fde047'; // yellow
     default:           return '#ffc94b';
   }
 }

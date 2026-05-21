@@ -31,10 +31,10 @@ export default function ProductPreview({ title, price, currency = '$', store, im
         )}
         
         <div className="flex items-end justify-between mt-1">
-          <span className="font-bold text-lg text-gray-900 leading-none">
+          <span className="font-bold text-2xl text-zinc-900 dark:text-zinc-50 leading-none tracking-tight">
             {currency}{price}
           </span>
-          <button className="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2 py-1.5 rounded hover:bg-indigo-100 transition-colors">
+          <button className="text-xs bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold px-2 py-1.5 rounded hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
             View Item
           </button>
         </div>
