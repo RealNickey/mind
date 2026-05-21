@@ -9,6 +9,7 @@ import { ImageAnalysis } from "./ImageAnalysis";
 import PlaceMap from "./PlaceMap";
 import { SpotifyModalUI } from "./SpotifyModalUI";
 import type { ItemCardItem } from "./ItemCard";
+import { getDisplayDomain, getYouTubeEmbedUrl } from "@/app/lib/url-utils";
 
 function asObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -60,6 +61,27 @@ function getRelativeTimeString(dateVal: string | Date): string {
   } catch (e) {
     return "some time ago";
   }
+}
+
+function looksLikeUrl(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return /^https?:\/\//i.test(value.trim());
+}
+
+function formatShortDate(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(parsed);
 }
 
 interface ItemViewDialogProps {
@@ -132,12 +154,28 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
     .trim();
 
   const imageAnalysisUrl = asString(item.metadata?.imageUrl) ?? null;
-  const isMusic = item.type.toLowerCase() === 'music';
+  const normalizedType = item.type.toLowerCase();
+  const isMusic = normalizedType === 'music';
+  const isYouTube = normalizedType === 'youtube';
   const metadata = item.metadata ?? null;
   const customData = asObject(metadata?.customData);
   const artist = asString(customData?.artist) ?? metadata?.author ?? 'Unknown artist';
   const cover = asString(customData?.imageUrl) ?? asString(customData?.image) ?? metadata?.imageUrl ?? '';
   const dominantColors = (item.metadata?.dominantColors as string[]) ?? (customData?.colors as string[]) ?? [];
+  const sourceDomain = getDisplayDomain(sourceUrl, 'YouTube') ?? 'YouTube';
+  const youtubeEmbedUrl = isYouTube
+    ? getYouTubeEmbedUrl(sourceUrl, { autoplay: true, mute: true })
+    : null;
+  const youtubeChannel = (asString(customData?.channel) ?? metadata?.author ?? sourceDomain).trim() || 'YouTube';
+  const youtubeChannelInitial = youtubeChannel.charAt(0).toUpperCase();
+  const youtubeViewsCount = asNumber(customData?.views);
+  const youtubeViews = asString(customData?.views)
+    ?? (typeof youtubeViewsCount === 'number' ? youtubeViewsCount.toLocaleString('en-US') : null);
+  const youtubeDuration = asString(customData?.duration);
+  const youtubeDate = formatShortDate(asString(customData?.date) ?? asString(metadata?.publishedDate));
+  const youtubeSummary = item.title?.trim()
+    ? `${item.title.trim()} — ${youtubeChannel}`
+    : `${youtubeChannel} video`;
 
   const handleSaveDescription = async (newVal: string) => {
     if (newVal === item.description) return;
@@ -218,20 +256,48 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
             {/* Left Column: theater mode media view */}
             <div className="flex-1 relative bg-zinc-50 dark:bg-zinc-900/30 flex items-center justify-center p-8 overflow-hidden min-h-[300px] md:min-h-0 min-w-0">
               <div className={`w-full h-full flex items-center justify-center overflow-hidden rounded-2xl ${item.type.toLowerCase() === 'link' || item.type.toLowerCase() === 'pdf' ? '' : 'max-h-[500px] [&_img]:max-h-[500px] [&_img]:w-auto [&_img]:object-contain'}`}>
-                {item.type.toLowerCase() === 'link' && sourceUrl ? (
+                {normalizedType === 'link' && sourceUrl ? (
                   <iframe
                     src={sourceUrl}
                     className="w-full h-full bg-white border-0"
                     sandbox="allow-same-origin allow-scripts"
                     title={item.title}
                   />
-                ) : item.type.toLowerCase() === 'pdf' && sourceUrl ? (
+                ) : normalizedType === 'pdf' && sourceUrl ? (
                   <iframe
                     src={sourceUrl}
                     className="w-full h-full bg-white border-0"
                     title={item.title}
                   />
-                ) : item.type.toLowerCase() === 'article' && item.content ? (
+                ) : isYouTube && youtubeEmbedUrl ? (
+                  <div className="w-full max-w-[980px] flex flex-col gap-4">
+                    <div
+                      className="relative w-full overflow-hidden rounded-2xl border border-white/30 dark:border-white/10 bg-black shadow-[0_28px_70px_-45px_rgba(0,0,0,0.75)]"
+                      style={{ aspectRatio: '16/9' }}
+                    >
+                      <iframe
+                        src={youtubeEmbedUrl}
+                        className="absolute inset-0 h-full w-full"
+                        title={item.title || 'YouTube video'}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                      <div className="absolute inset-0 pointer-events-none ring-1 ring-white/10" />
+                      {youtubeDuration && (
+                        <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[10px] px-2 py-1 rounded-full font-mono font-semibold shadow">
+                          {youtubeDuration}
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-zinc-900/70 p-4 shadow-sm backdrop-blur-md">
+                      <p className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                        {looksLikeUrl(description) ? youtubeSummary : (description || youtubeSummary)}
+                      </p>
+                    </div>
+                  </div>
+                ) : normalizedType === 'article' && item.content ? (
                   <div className="w-full h-full bg-[#fdfdfc] dark:bg-zinc-900 overflow-y-auto p-12 custom-scrollbar">
                     <article className="prose prose-zinc dark:prose-invert prose-lg mx-auto max-w-2xl font-serif">
                       <h1 className="font-heading mb-8">{item.title}</h1>
@@ -286,18 +352,19 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                   </div>
                 ) : (
                   <>
-                    {/* TLDR description box */}
-                    <div className="space-y-2">
-                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">TLDR</div>
-                      <textarea
-                        ref={tldrRef}
-                        className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none overflow-hidden font-sans"
-                        placeholder="Add a summary..."
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        onBlur={() => handleSaveDescription(description)}
-                      />
-                    </div>
+                    {!isYouTube && (
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">TLDR</div>
+                        <textarea
+                          ref={tldrRef}
+                          className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none overflow-hidden font-sans"
+                          placeholder="Add a summary..."
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          onBlur={() => handleSaveDescription(description)}
+                        />
+                      </div>
+                    )}
 
                     {/* MIND TAGS */}
                     <div className="space-y-2">

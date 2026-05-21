@@ -422,6 +422,8 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
           views={asString(customData?.views) ?? 'N/A'}
           date={asString(customData?.date) ?? 'Recently'}
           duration={asString(customData?.duration)}
+          sourceUrl={sourceUrl ?? undefined}
+          description={item.description ?? item.content ?? undefined}
         />
       );
     }
