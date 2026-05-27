@@ -450,6 +450,7 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
           album={asString(customData?.album)}
           cover={imageUrl ?? svgPlaceholder('Music')}
           year={asString(customData?.year) ?? getYear(metadata?.publishedDate)}
+          sourceUrl={sourceUrl ?? undefined}
           isCard={isCard}
         />
       );

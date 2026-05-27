@@ -7,9 +7,10 @@ import Link from "next/link";
 import ItemPreview from "./previews/ItemPreview";
 import { ImageAnalysis } from "./ImageAnalysis";
 import PlaceMap from "./PlaceMap";
-import { SpotifyModalUI } from "./SpotifyModalUI";
+import { MusicModalUI } from "./MusicModalUI";
 import type { ItemCardItem } from "./ItemCard";
 import { getDisplayDomain, getYouTubeEmbedUrl } from "@/app/lib/url-utils";
+import { getMusicProvider } from "@/app/lib/music";
 
 function asObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -160,7 +161,9 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
   const metadata = item.metadata ?? null;
   const customData = asObject(metadata?.customData);
   const artist = asString(customData?.artist) ?? metadata?.author ?? 'Unknown artist';
+  const album = asString(customData?.album) ?? null;
   const cover = asString(customData?.imageUrl) ?? asString(customData?.image) ?? metadata?.imageUrl ?? '';
+  const musicProvider = getMusicProvider(sourceUrl);
   const dominantColors = (item.metadata?.dominantColors as string[]) ?? (customData?.colors as string[]) ?? [];
   const sourceDomain = getDisplayDomain(sourceUrl, 'YouTube') ?? 'YouTube';
   const youtubeEmbedUrl = isYouTube
@@ -297,6 +300,15 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                       </p>
                     </div>
                   </div>
+                ) : isMusic ? (
+                  <MusicModalUI
+                    title={item.title}
+                    artist={artist}
+                    album={album ?? undefined}
+                    cover={cover}
+                    sourceUrl={sourceUrl ?? undefined}
+                    description={item.description ?? item.content ?? undefined}
+                  />
                 ) : normalizedType === 'article' && item.content ? (
                   <div className="w-full h-full bg-[#fdfdfc] dark:bg-zinc-900 overflow-y-auto p-12 custom-scrollbar">
                     <article className="prose prose-zinc dark:prose-invert prose-lg mx-auto max-w-2xl font-serif">
@@ -340,31 +352,44 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
 
               {/* Scrollable details */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-                {isMusic ? (
-                  <div className="flex items-center justify-center p-2">
-                    <SpotifyModalUI 
-                      title={item.title} 
-                      artist={artist} 
-                      cover={cover} 
-                      sourceUrl={sourceUrl ?? undefined} 
-                      description={item.description ?? item.content ?? undefined} 
-                    />
-                  </div>
-                ) : (
-                  <>
-                    {!isYouTube && (
-                      <div className="space-y-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">TLDR</div>
-                        <textarea
-                          ref={tldrRef}
-                          className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none overflow-hidden font-sans"
-                          placeholder="Add a summary..."
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          onBlur={() => handleSaveDescription(description)}
-                        />
+                <>
+                  {isMusic && (
+                    <div className="space-y-2 rounded-2xl border border-zinc-200/70 bg-white/65 p-4 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-900/45">
+                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Playback Source</div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{musicProvider.label}</p>
+                          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                            {album ? `${artist} • ${album}` : artist}
+                          </p>
+                        </div>
+                        {sourceUrl && (
+                          <Link
+                            href={sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          >
+                            Open source
+                          </Link>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
+
+                  {!isYouTube && (
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">TLDR</div>
+                      <textarea
+                        ref={tldrRef}
+                        className="w-full min-h-[90px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none overflow-hidden font-sans"
+                        placeholder="Add a summary..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        onBlur={() => handleSaveDescription(description)}
+                      />
+                    </div>
+                  )}
 
                     {/* MIND TAGS */}
                     <div className="space-y-2">
@@ -422,8 +447,7 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                         </div>
                       </div>
                     )}
-                  </>
-                )}
+                </>
               </div>
 
               {/* Footer controls */}

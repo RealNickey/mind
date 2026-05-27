@@ -1,4 +1,5 @@
 import { parse } from 'tldts';
+import { isKnownMusicUrl } from './music';
 
 export type ContentType =
   | 'article'
@@ -108,7 +109,12 @@ export function detectContentType(url: string, metadata: DetectionMetadata): Con
     if (domain === 'openlibrary.org' || domain === 'goodreads.com') {
       return 'book';
     }
-    if (domain === 'spotify.com' || domain === 'soundcloud.com' || isAppleMusicUrl(hostname, pathname)) {
+    if (
+      domain === 'spotify.com' ||
+      domain === 'soundcloud.com' ||
+      isAppleMusicUrl(hostname, pathname) ||
+      isKnownMusicUrl(url)
+    ) {
       return 'music';
     }
     if (domain === 'openstreetmap.org' || isGoogleMapsUrl(hostname, pathname, domainWithoutSuffix)) {
