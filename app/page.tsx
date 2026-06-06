@@ -14,9 +14,33 @@ async function getInitialItems() {
   }
 
   try {
-    const { data, error } = await db
-      .from('Item')
-      .select('*')
+    // By default, list items in the Main Space.
+    // Main Space contains items that do NOT belong to any custom Space (Space: or Session:).
+    const { data: spaces, error: spacesError } = await db
+      .from('Collection')
+      .select('id')
+      .or('name.like.Space:%,name.like.Session:%');
+
+    if (spacesError) throw spacesError;
+
+    const spaceIds = (spaces ?? []).map((s) => s.id);
+    let query = db.from('Item').select('*');
+
+    if (spaceIds.length > 0) {
+      const { data: linkedItems, error: linkedError } = await db
+        .from('_CollectionToItem')
+        .select('B')
+        .in('A', spaceIds);
+
+      if (linkedError) throw linkedError;
+
+      const excludedIds = [...new Set((linkedItems ?? []).map((row) => row.B))];
+      if (excludedIds.length > 0) {
+        query = query.not('id', 'in', `(${excludedIds.join(',')})`);
+      }
+    }
+
+    const { data, error } = await query
       .order('updatedAt', { ascending: false })
       .limit(PAGE_SIZE);
 

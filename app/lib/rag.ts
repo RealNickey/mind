@@ -35,6 +35,27 @@ export async function searchSimilarItems(query: string, limit = 5, collectionId?
       const collectionItemIds = new Set((collectionLinks ?? []).map((row) => row.B));
       ids = ids.filter(id => collectionItemIds.has(id));
       if (!ids.length) return [];
+    } else {
+      // By default, only search items in the Main Space.
+      // Exclude items that belong to any custom Space (Space: or Session:).
+      const { data: spaces, error: spacesError } = await db
+        .from('Collection')
+        .select('id')
+        .or('name.like.Space:%,name.like.Session:%');
+      if (spacesError) throw spacesError;
+      
+      const spaceIds = (spaces ?? []).map((s) => s.id);
+      if (spaceIds.length > 0) {
+        const { data: linkedItems, error: linkedError } = await db
+          .from('_CollectionToItem')
+          .select('B')
+          .in('A', spaceIds);
+        if (linkedError) throw linkedError;
+
+        const excludedIds = new Set((linkedItems ?? []).map((row) => row.B));
+        ids = ids.filter(id => !excludedIds.has(id));
+        if (!ids.length) return [];
+      }
     }
 
     const { data: items, error: itemsErr } = await db
