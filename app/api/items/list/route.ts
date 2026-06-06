@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     const { limit, offset, collectionId, q: textQuery } = parseResult.data;
 
     let filteredItemIds: string[] | null = null;
+    let excludedItemIds: string[] = [];
 
     if (collectionId) {
       const { data: collectionLinks, error: collectionLinksError } = await db
@@ -59,9 +60,35 @@ export async function GET(req: NextRequest) {
       if (filteredItemIds.length === 0) {
         return NextResponse.json([]);
       }
+    } else {
+      // By default, list items in the Main Space.
+      // Main Space contains items that do NOT belong to any custom Space (Space: or Session:).
+      const { data: spaces, error: spacesError } = await db
+        .from('Collection')
+        .select('id')
+        .or('name.like.Space:%,name.like.Session:%');
+
+      if (spacesError) throw spacesError;
+
+      const spaceIds = (spaces ?? []).map((s) => s.id);
+
+      if (spaceIds.length > 0) {
+        const { data: linkedItems, error: linkedError } = await db
+          .from('_CollectionToItem')
+          .select('B')
+          .in('A', spaceIds);
+
+        if (linkedError) throw linkedError;
+
+        excludedItemIds = unique((linkedItems ?? []).map((row) => row.B));
+      }
     }
 
     let query = db.from('Item').select('*');
+
+    if (excludedItemIds.length > 0) {
+      query = query.not('id', 'in', `(${excludedItemIds.join(',')})`);
+    }
 
     if (textQuery && textQuery.trim()) {
       const safeQuery = textQuery.replace(/[,%()']/g, ' ').trim();

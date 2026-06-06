@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Masonry from "react-masonry-css";
+import { motion } from "framer-motion";
 import ItemCard, { type ItemCardItem } from "./ItemCard";
 
 type Item = ItemCardItem;
@@ -16,9 +17,23 @@ interface MasonryGridProps {
   onPaste?: (text: string) => void;
   isPasting?: boolean;
   onAddClick?: () => void;
+  spaces?: { id: string; name: string }[];
+  onMoveToSpace?: (item: Item, spaceId: string | null) => void;
 }
 
-export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste, isPasting, onAddClick }: MasonryGridProps) {
+export default function MasonryGrid({
+  items,
+  onExpand,
+  onEdit,
+  onDelete,
+  onCanvas,
+  onInspectAI,
+  onPaste,
+  isPasting,
+  onAddClick,
+  spaces,
+  onMoveToSpace,
+}: MasonryGridProps) {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
@@ -121,10 +136,16 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
       </div>
 
       {items.map((item, index) => (
-        <div
+        <motion.div
+          layout
           key={item.id}
           className="mb-5"
           style={item.type?.toLowerCase() === 'music' ? { overflow: 'visible' } : undefined}
+          transition={{
+            type: "spring",
+            stiffness: 100,
+            damping: 18,
+          }}
         >
           <ItemCard
             item={item}
@@ -134,8 +155,10 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
             onDelete={onDelete}
             onCanvas={onCanvas}
             onInspectAI={onInspectAI}
+            spaces={spaces}
+            onMoveToSpace={onMoveToSpace}
           />
-        </div>
+        </motion.div>
       ))}
     </Masonry>
   );

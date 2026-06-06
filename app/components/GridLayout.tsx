@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +39,10 @@ function dedupeById(items: Item[]): Item[] {
   });
 }
 
+function getSpaceName(name: string): string {
+  return name.replace(/^(Space:|Session:)/, "");
+}
+
 export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE }: GridLayoutProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -51,39 +55,39 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
   const [isAddOpen, setIsAddOpen] = useState(false);
 
-  // Sessions and Settings States
-  const [activeSession, setActiveSession] = useState<CollectionListItem | null>(null);
-  const [showSessionsDropdown, setShowSessionsDropdown] = useState(false);
-  const [newSessionName, setNewSessionName] = useState("");
+  // Spaces and Settings States
+  const [activeSpace, setActiveSpace] = useState<CollectionListItem | null>(null);
+  const [showSpacesDropdown, setShowSpacesDropdown] = useState(false);
+  const [newSpaceName, setNewSpaceName] = useState("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"general" | "sessions" | "shortcuts" | "danger">("general");
+  const [settingsTab, setSettingsTab] = useState<"general" | "spaces" | "shortcuts" | "danger">("general");
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
-      const savedSession = localStorage.getItem("mind_active_session");
-      if (savedSession) {
+      const savedSpace = localStorage.getItem("mind_active_space");
+      if (savedSpace) {
         try {
-          setActiveSession(JSON.parse(savedSession));
+          setActiveSpace(JSON.parse(savedSpace));
         } catch (e) {
-          console.error("Failed to parse active session from localStorage", e);
+          console.error("Failed to parse active space from localStorage", e);
         }
       }
     }
   }, []);
 
-  const changeSession = (session: CollectionListItem | null) => {
-    setActiveSession(session);
+  const changeSpace = (space: CollectionListItem | null) => {
+    setActiveSpace(space);
     if (typeof window !== 'undefined') {
-      if (session) {
-        localStorage.setItem("mind_active_session", JSON.stringify(session));
+      if (space) {
+        localStorage.setItem("mind_active_space", JSON.stringify(space));
       } else {
-        localStorage.removeItem("mind_active_session");
+        localStorage.removeItem("mind_active_space");
       }
     }
-    setShowSessionsDropdown(false);
+    setShowSpacesDropdown(false);
   };
 
   const { data: collections = [], refetch: refetchCollections } = useQuery<CollectionListItem[]>({
@@ -91,7 +95,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     queryFn: ({ signal }) => listCollections(signal),
   });
 
-  const sessionCollections = collections.filter(c => c.name.startsWith("Session:"));
+  const spaceCollections = collections.filter(c => c.name.startsWith("Space:") || c.name.startsWith("Session:"));
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -111,13 +115,13 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     isError,
     error: itemsQueryError,
   } = useInfiniteQuery({
-    queryKey: ['items', debouncedSearch, activeSession?.id],
+    queryKey: ['items', debouncedSearch, activeSpace?.id],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0, signal }) => {
       return listItems({
         limit: pageSize,
         offset: Number(pageParam),
-        collectionId: activeSession?.id || undefined,
+        collectionId: activeSpace?.id || undefined,
         q: debouncedSearch || undefined,
         signal,
       });
@@ -127,7 +131,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       return allPages.reduce((acc, page) => acc + page.length, 0);
     },
     initialData: () => {
-      if (!debouncedSearch && !activeSession) {
+      if (!debouncedSearch && !activeSpace) {
         return {
           pages: [initialItems],
           pageParams: [0],
@@ -144,25 +148,32 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     : null;
   const displayError = error ?? itemsErrorMessage;
 
-  const items = dedupeById(data?.pages.flat() || []);
+  const { data: recentItems } = useQuery<Item[]>({
+    queryKey: ['recent-items', activeSpace?.id],
+    queryFn: async ({ signal }) => {
+      return listItems({
+        limit: 10,
+        offset: 0,
+        collectionId: activeSpace?.id || undefined,
+        signal,
+      });
+    },
+    refetchInterval: 4000,
+    enabled: viewMode === "grid" && !debouncedSearch,
+  });
 
-  const addPastedItemMutation = useMutation({
-    mutationFn: async (trimmed: string) => {
-      const isUrl = /^https?:\/\//i.test(trimmed);
-      const payload: CreateItemPayload = {
-        title: isUrl ? trimmed : trimmed.slice(0, 80),
-        description: isUrl ? undefined : trimmed.slice(0, 280),
-        content: isUrl ? undefined : trimmed,
-        type: isUrl ? undefined : 'note',
-        sourceUrl: isUrl ? trimmed : undefined,
-        collectionId: activeSession?.id || undefined,
-      };
+  const items = useMemo(() => {
+    const infItems = data?.pages.flat() || [];
+    const merged = [...(recentItems ?? []), ...infItems];
+    return dedupeById(merged);
+  }, [data, recentItems]);
+
   const addItemMutation = useMutation({
     mutationFn: async (payload: CreateItemPayload) => {
       return createItem(payload);
     },
     onSuccess: (newItem) => {
-      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSession?.id], (old) => {
+      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
         if (!old) return old;
 
         const firstPage = old.pages[0] ?? [];
@@ -204,9 +215,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
         content: isUrl ? undefined : trimmed,
         type: isUrl ? undefined : 'note',
         sourceUrl: isUrl ? trimmed : undefined,
+        collectionId: activeSpace?.id || undefined,
       });
     }
-  }, [addItemMutation]);
+  }, [addItemMutation, activeSpace]);
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
@@ -226,7 +238,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       await deleteItem(id);
     },
     onSuccess: (_, id) => {
-      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSession?.id], (old) => {
+      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -237,33 +249,66 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     }
   });
 
-  // Sessions and Settings Mutations
-  const createSessionMutation = useMutation({
-    mutationFn: async (name: string) => {
-      return createCollection("Session:" + name);
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ id, collectionId }: { id: string; collectionId: string | null }) => {
+      const res = await fetch(`/api/items/${id}/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionId })
+      });
+      if (!res.ok) throw new Error("Failed to move item to space");
+      return res.json();
     },
-    onSuccess: (newCol) => {
-      refetchCollections();
-      changeSession(newCol);
-      setNewSessionName("");
+    onSuccess: (updatedItem, { id, collectionId }) => {
+      const currentActiveSpaceId = activeSpace?.id || null;
+      if (collectionId !== currentActiveSpaceId) {
+        queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: Item[]) => page.filter(item => item.id !== id))
+          };
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
     },
     onError: () => {
-      setError("Failed to create session.");
+      setError("Failed to move item.");
     }
   });
 
-  const deleteSessionMutation = useMutation({
+  const handleMoveToSpace = (item: Item, collectionId: string | null) => {
+    moveItemMutation.mutate({ id: item.id, collectionId });
+  };
+
+  // Spaces and Settings Mutations
+  const createSpaceMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return createCollection("Space:" + name);
+    },
+    onSuccess: (newCol) => {
+      refetchCollections();
+      changeSpace(newCol);
+      setNewSpaceName("");
+    },
+    onError: () => {
+      setError("Failed to create space.");
+    }
+  });
+
+  const deleteSpaceMutation = useMutation({
     mutationFn: async (id: string) => {
       await deleteCollection(id);
     },
     onSuccess: (_, id) => {
       refetchCollections();
-      if (activeSession?.id === id) {
-        changeSession(null);
+      if (activeSpace?.id === id) {
+        changeSpace(null);
       }
     },
     onError: () => {
-      setError("Failed to delete session.");
+      setError("Failed to delete space.");
     }
   });
 
@@ -275,7 +320,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      changeSession(null);
+      changeSpace(null);
       setShowSettingsModal(false);
       window.location.reload();
     },
@@ -318,7 +363,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-foreground transition-colors duration-150" size={13} />
             <input
               type="text"
-              placeholder={activeSession ? `Search ${activeSession.name.replace(/^Session:/, "")}...` : "Search your mind..."}
+              placeholder={activeSpace ? `Search ${getSpaceName(activeSpace.name)}...` : "Search your mind..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-1.5 rounded-full border border-foreground/5 bg-foreground/[0.02] focus:bg-background/80 focus:border-primary/30 focus:ring-1 focus:ring-primary/20 focus:outline-none text-xs font-medium placeholder:text-muted-foreground transition-all duration-200"
@@ -331,43 +376,43 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
  
           {/* Right Action buttons */}
           <div className="flex items-center gap-1.5 relative shrink-0">
-            {/* Sessions Selector */}
+            {/* Spaces Selector */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   className={`p-2 rounded-full transition-all duration-150 active-sink ${
-                    activeSession
+                    activeSpace
                       ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm"
                       : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                   }`}
                   onClick={() => {
-                    setShowSessionsDropdown((prev) => !prev);
+                    setShowSpacesDropdown((prev) => !prev);
                     setShowSettingsModal(false);
                   }}
-                  aria-label="Toggle sessions menu"
+                  aria-label="Toggle spaces menu"
                 >
                   <Layers size={15} aria-hidden="true" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                {activeSession ? `Session: ${activeSession.name.replace(/^Session:/, "")}` : "Main Mind"}
+                {activeSpace ? `Space: ${getSpaceName(activeSpace.name)}` : "Main Mind"}
               </TooltipContent>
             </Tooltip>
 
-            {/* Sessions Dropdown Menu */}
+            {/* Spaces Dropdown Menu */}
             <AnimatePresence>
-              {showSessionsDropdown && (
+              {showSpacesDropdown && (
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-2xl z-50 ring-1 ring-black/5 dark:ring-white/5 font-sans"
+                  className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-2xl z-50 ring-1 ring-black/5 dark:ring-white/5 font-sans"
                 >
                   <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Sessions</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Spaces</span>
                     <button
-                      onClick={() => setShowSessionsDropdown(false)}
+                      onClick={() => setShowSpacesDropdown(false)}
                       className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                       <X size={12} />
@@ -377,29 +422,29 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                   <div className="space-y-1 max-h-56 overflow-y-auto scrollbar-thin py-0.5">
                     {/* Default Main Mind */}
                     <button
-                      onClick={() => changeSession(null)}
+                      onClick={() => changeSpace(null)}
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-colors ${
-                        activeSession === null
+                        activeSpace === null
                           ? "bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 font-semibold shadow-sm"
                           : "hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-medium"
                       }`}
                     >
                       <span>Main Mind</span>
-                      {activeSession === null && <Check size={13} />}
+                      {activeSpace === null && <Check size={13} />}
                     </button>
 
-                    {/* Custom Sessions */}
-                    {sessionCollections.map((col) => {
-                      const cleanName = col.name.replace(/^Session:/, "");
+                    {/* Custom Spaces */}
+                    {spaceCollections.map((col) => {
+                      const cleanName = getSpaceName(col.name);
                       return (
                         <div
                           key={col.id}
                           className="group/session flex items-center justify-between w-full rounded-xl text-xs hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors relative"
                         >
                           <button
-                            onClick={() => changeSession(col)}
+                            onClick={() => changeSpace(col)}
                             className={`flex-1 text-left px-3 py-2.5 rounded-xl text-xs transition-colors truncate pr-8 ${
-                              activeSession?.id === col.id
+                              activeSpace?.id === col.id
                                 ? "text-amber-600 dark:text-amber-400 font-bold"
                                 : "text-zinc-700 dark:text-zinc-300 font-medium"
                             }`}
@@ -407,19 +452,19 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                             <span>{cleanName}</span>
                           </button>
                           
-                          {activeSession?.id === col.id && (
+                          {activeSpace?.id === col.id && (
                             <Check size={13} className="absolute right-9 text-amber-500 pointer-events-none" />
                           )}
 
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm(`Are you sure you want to delete session "${cleanName}"?`)) {
-                                deleteSessionMutation.mutate(col.id);
+                              if (confirm(`Are you sure you want to delete space "${cleanName}"?`)) {
+                                deleteSpaceMutation.mutate(col.id);
                               }
                             }}
                             className="opacity-0 group-hover/session:opacity-100 p-1.5 mr-1.5 rounded-lg hover:bg-rose-500/15 hover:text-rose-500 text-zinc-400 transition-all active:scale-95"
-                            title="Delete session"
+                            title="Delete space"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -427,36 +472,36 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                       );
                     })}
 
-                    {sessionCollections.length === 0 && (
+                    {spaceCollections.length === 0 && (
                       <div className="text-xs text-center text-zinc-400 dark:text-zinc-500 py-4 italic">
-                        No custom sessions yet.
+                        No custom spaces yet.
                       </div>
                     )}
                   </div>
 
-                  {/* Create New Session input */}
+                  {/* Create New Space input */}
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      if (newSessionName.trim()) {
-                        createSessionMutation.mutate(newSessionName.trim());
+                      if (newSpaceName.trim()) {
+                        createSpaceMutation.mutate(newSpaceName.trim());
                       }
                     }}
                     className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex gap-1.5"
                   >
                     <input
                       type="text"
-                      placeholder="Create new session..."
-                      value={newSessionName}
-                      onChange={(e) => setNewSessionName(e.target.value)}
+                      placeholder="Create new space..."
+                      value={newSpaceName}
+                      onChange={(e) => setNewSpaceName(e.target.value)}
                       className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 text-xs text-foreground placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
                     />
                     <button
                       type="submit"
-                      disabled={!newSessionName.trim() || createSessionMutation.isPending}
+                      disabled={!newSpaceName.trim() || createSpaceMutation.isPending}
                       className="px-3 rounded-xl bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 flex items-center justify-center font-medium text-xs"
                     >
-                      {createSessionMutation.isPending ? (
+                      {createSpaceMutation.isPending ? (
                         <Loader2 size={12} className="animate-spin" />
                       ) : (
                         <Plus size={13} />
@@ -478,7 +523,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                   }`}
                   onClick={() => {
                     setShowSettingsModal(true);
-                    setShowSessionsDropdown(false);
+                    setShowSpacesDropdown(false);
                   }}
                   aria-label="Open settings"
                 >
@@ -542,6 +587,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             onDelete={handleDelete}
             onCanvas={handleCanvas}
             onInspectAI={handleInspectAI}
+            spaces={spaceCollections}
+            onMoveToSpace={handleMoveToSpace}
           />
         ) : (
           <>
@@ -568,6 +615,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                 onPaste={handlePaste}
                 isPasting={addItemMutation.isPending}
                 onAddClick={() => setIsAddOpen(true)}
+                spaces={spaceCollections}
+                onMoveToSpace={handleMoveToSpace}
               />
             )}
  
@@ -610,7 +659,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             overscrollBehavior: 'contain'
           }}
         >
-          <AIChat activeSessionId={activeSession?.id} />
+          <AIChat activeSpaceId={activeSpace?.id} />
         </motion.div>
       )}
  
@@ -676,15 +725,15 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                       <span>Appearance</span>
                     </button>
                     <button
-                      onClick={() => setSettingsTab("sessions")}
+                      onClick={() => setSettingsTab("spaces")}
                       className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-2 ${
-                        settingsTab === "sessions"
+                        settingsTab === "spaces"
                           ? "bg-foreground/5 font-semibold text-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-foreground/2"
                       }`}
                     >
                       <Layers size={13} />
-                      <span>Session Manager</span>
+                      <span>Space Manager</span>
                     </button>
                     <button
                       onClick={() => setSettingsTab("shortcuts")}
@@ -722,7 +771,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-sm font-semibold capitalize font-heading text-foreground">
                       {settingsTab === "general" && "Appearance & Theme"}
-                      {settingsTab === "sessions" && "Session Dashboard"}
+                      {settingsTab === "spaces" && "Space Dashboard"}
                       {settingsTab === "shortcuts" && "Keyboard Cheatsheet"}
                       {settingsTab === "danger" && "System Administration"}
                     </h3>
@@ -773,17 +822,17 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                       </motion.div>
                     )}
 
-                    {settingsTab === "sessions" && (
+                    {settingsTab === "spaces" && (
                       <motion.div
-                        key="sessions"
+                        key="spaces"
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         className="space-y-4"
                       >
                         <div className="border border-foreground/5 rounded-2xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800/60 max-h-64 overflow-y-auto scrollbar-thin">
-                          {sessionCollections.map((col) => {
-                            const cleanName = col.name.replace(/^Session:/, "");
+                          {spaceCollections.map((col) => {
+                            const cleanName = getSpaceName(col.name);
                             return (
                               <div key={col.id} className="flex items-center justify-between p-3 bg-zinc-50/20 dark:bg-zinc-900/10">
                                 <div>
@@ -792,12 +841,12 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                                 </div>
                                 <button
                                   onClick={() => {
-                                    if (confirm(`Delete session "${cleanName}" and unlink all its thoughts?`)) {
-                                      deleteSessionMutation.mutate(col.id);
+                                    if (confirm(`Delete space "${cleanName}" and unlink all its thoughts?`)) {
+                                      deleteSpaceMutation.mutate(col.id);
                                     }
                                   }}
                                   className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                  title="Delete Session"
+                                  title="Delete Space"
                                 >
                                   <Trash2 size={13} />
                                 </button>
@@ -805,9 +854,9 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                             );
                           })}
 
-                          {sessionCollections.length === 0 && (
+                          {spaceCollections.length === 0 && (
                             <div className="p-6 text-center text-xs text-zinc-400 italic">
-                              No custom sessions created yet. Create one from the session menu in the top bar!
+                              No custom spaces created yet. Create one from the space menu in the top bar!
                             </div>
                           )}
                         </div>
@@ -847,13 +896,13 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs text-red-700 dark:text-red-300 space-y-2">
                           <p className="font-semibold">Warning: This action is permanent!</p>
                           <p className="text-[11px] opacity-90 leading-relaxed">
-                            Resetting the database will delete ALL items, tags, sessions, metadata, and canvas items. This action cannot be undone.
+                            Resetting the database will delete ALL items, tags, spaces, metadata, and canvas items. This action cannot be undone.
                           </p>
                         </div>
 
                         <button
                           onClick={() => {
-                            if (confirm("CRITICAL WARNING: Are you absolutely sure you want to RESET the entire database? All thoughts, bookmarks, media, and sessions will be deleted forever.")) {
+                            if (confirm("CRITICAL WARNING: Are you absolutely sure you want to RESET the entire database? All thoughts, bookmarks, media, and spaces will be deleted forever.")) {
                               resetAllMutation.mutate();
                             }
                           }}
@@ -882,7 +931,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onSave={async (payload) => {
-          await addItemMutation.mutateAsync(payload);
+          await addItemMutation.mutateAsync({
+            ...payload,
+            collectionId: activeSpace?.id || undefined,
+          });
         }}
       />
     </div>
