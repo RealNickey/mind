@@ -11,6 +11,7 @@ import InfiniteCanvas from "./InfiniteCanvas";
 import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
 import ItemViewDialog from "./ItemViewDialog";
+import AddThoughtDialog from "./AddThoughtDialog";
 import ThemeToggle from "./ThemeToggle";
 import { createItem, deleteItem, listItems, type CreateItemPayload } from "@/app/lib/api-client/items";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -46,6 +47,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
   const [expandedItem, setExpandedItem] = useState<Item | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -99,16 +101,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
 
   const items = dedupeById(data?.pages.flat() || []);
 
-  const addPastedItemMutation = useMutation({
-    mutationFn: async (trimmed: string) => {
-      const isUrl = /^https?:\/\//i.test(trimmed);
-      const payload: CreateItemPayload = {
-        title: isUrl ? trimmed : trimmed.slice(0, 80),
-        description: isUrl ? undefined : trimmed.slice(0, 280),
-        content: isUrl ? undefined : trimmed,
-        type: isUrl ? undefined : 'note',
-        sourceUrl: isUrl ? trimmed : undefined,
-      };
+  const addItemMutation = useMutation({
+    mutationFn: async (payload: CreateItemPayload) => {
       return createItem(payload);
     },
     onSuccess: (newItem) => {
@@ -121,7 +115,7 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       });
     },
     onError: () => {
-      setError("Failed to save pasted content.");
+      setError("Failed to save content.");
     }
   });
 
@@ -145,8 +139,17 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
 
   const handlePaste = useCallback((text: string) => {
     const trimmed = text.trim();
-    if (trimmed) addPastedItemMutation.mutate(trimmed);
-  }, [addPastedItemMutation]);
+    if (trimmed) {
+      const isUrl = /^https?:\/\//i.test(trimmed);
+      addItemMutation.mutate({
+        title: isUrl ? trimmed : trimmed.slice(0, 80),
+        description: isUrl ? undefined : trimmed.slice(0, 280),
+        content: isUrl ? undefined : trimmed,
+        type: isUrl ? undefined : 'note',
+        sourceUrl: isUrl ? trimmed : undefined,
+      });
+    }
+  }, [addItemMutation]);
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
@@ -298,7 +301,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                 onCanvas={handleCanvas}
                 onInspectAI={handleInspectAI}
                 onPaste={handlePaste}
-                isPasting={addPastedItemMutation.isPending}
+                isPasting={addItemMutation.isPending}
+                onAddClick={() => setIsAddOpen(true)}
               />
             )}
 
@@ -360,6 +364,14 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             deleteMutation.mutate(item.id);
             setExpandedItem(null);
           }
+        }}
+      />
+
+      <AddThoughtDialog
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onSave={async (payload) => {
+          await addItemMutation.mutateAsync(payload);
         }}
       />
     </div>

@@ -15,9 +15,10 @@ interface MasonryGridProps {
   onInspectAI?: (item: Item) => void;
   onPaste?: (text: string) => void;
   isPasting?: boolean;
+  onAddClick?: () => void;
 }
 
-export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste, isPasting }: MasonryGridProps) {
+export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste, isPasting, onAddClick }: MasonryGridProps) {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
@@ -65,8 +66,8 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
 
       {/* Add new item card */}
       <div className="mb-5">
-        <div
-          className="group relative flex flex-col justify-center items-center overflow-hidden p-7 h-[200px] text-center transition-all duration-200 cursor-text"
+        <button
+          className="add-card-root group relative flex flex-col justify-center items-center overflow-hidden p-7 h-[200px] w-full text-center transition-all duration-200 cursor-pointer border-0 outline-none"
           style={{
             borderRadius: '16px 4px 16px 4px',
             background: 'rgba(255,255,255,0.28)',
@@ -76,24 +77,8 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
             boxShadow: '0 2px 16px -6px rgba(0,0,0,0.04)',
             transition: 'border-color 200ms ease, background 200ms ease',
           }}
-          role="textbox"
-          aria-label="Paste or type to add a new item"
-          tabIndex={0}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData.getData("text");
-            if (text && onPaste) onPaste(text);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              const target = e.target as HTMLDivElement;
-              if (target.innerText.trim() && onPaste) {
-                onPaste(target.innerText.trim());
-                target.innerText = '';
-              }
-            }
-          }}
+          onClick={onAddClick}
+          aria-label="Add a new thought"
         >
           <style>{`
             .add-card-root:hover {
@@ -132,27 +117,7 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500">or type and press Enter</p>
           </div>
-          <textarea
-            className="w-full h-full absolute inset-0 opacity-0 resize-none cursor-text p-6"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                const target = e.target as HTMLTextAreaElement;
-                if (target.value.trim() && onPaste) {
-                  onPaste(target.value.trim());
-                  target.value = '';
-                }
-              }
-            }}
-            onBlur={(e) => {
-              if (e.target.value.trim() && onPaste) {
-                onPaste(e.target.value.trim());
-                e.target.value = '';
-              }
-            }}
-            aria-label="Type note content here"
-          />
-        </div>
+        </button>
       </div>
 
       {items.map((item, index) => (
