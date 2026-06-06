@@ -7,6 +7,7 @@ import { parseJsonBody } from '@/app/api/_validation';
 
 const chatRequestSchema = z.object({
   messages: z.unknown(),
+  collectionId: z.string().optional().nullable(),
 });
 
 function getLatestUserMessageText(messages: ModelMessage[]): string | null {
@@ -67,7 +68,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'A user message is required' }, { status: 400 });
     }
 
-    const { contextItems, systemPrompt } = await buildGroundedChatPrompt(latestUserMessage);
+    const { collectionId } = parsedBody.data;
+    const { contextItems, systemPrompt } = await buildGroundedChatPrompt(latestUserMessage, collectionId);
     const sources = toChatMessageSources(contextItems);
 
     const result = streamText({

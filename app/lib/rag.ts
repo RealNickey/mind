@@ -10,7 +10,7 @@ export type SimilarItemResult = RagItem & {
   similarity: number;
 };
 
-export async function searchSimilarItems(query: string, limit = 5): Promise<SimilarItemResult[]> {
+export async function searchSimilarItems(query: string, limit = 5, collectionId?: string | null): Promise<SimilarItemResult[]> {
   try {
     const vector = await generateEmbedding(query);
     
@@ -23,8 +23,19 @@ export async function searchSimilarItems(query: string, limit = 5): Promise<Simi
     });
     if (rpcErr) throw rpcErr;
 
-    const ids = (matchData ?? []).map((row: MatchItemRow) => row.id);
+    let ids = (matchData ?? []).map((row: MatchItemRow) => row.id);
     if (!ids.length) return [];
+
+    if (collectionId) {
+      const { data: collectionLinks, error: linksError } = await db
+        .from('_CollectionToItem')
+        .select('B')
+        .eq('A', collectionId);
+      if (linksError) throw linksError;
+      const collectionItemIds = new Set((collectionLinks ?? []).map((row) => row.B));
+      ids = ids.filter(id => collectionItemIds.has(id));
+      if (!ids.length) return [];
+    }
 
     const { data: items, error: itemsErr } = await db
       .from('Item')

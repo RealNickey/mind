@@ -57,11 +57,11 @@ export function toChatMessageSources(items: SimilarItemResult[]): ChatMessageSou
   }));
 }
 
-export async function buildGroundedChatPrompt(query: string): Promise<{
+export async function buildGroundedChatPrompt(query: string, collectionId?: string | null): Promise<{
   contextItems: SimilarItemResult[];
   systemPrompt: string;
 }> {
-  const contextItems = await searchSimilarItems(query, MAX_RAG_ITEMS);
+  const contextItems = await searchSimilarItems(query, MAX_RAG_ITEMS, collectionId);
   const contextText = formatContextItems(contextItems);
   const systemPrompt = [
     "You are a helpful AI assistant for the user's saved content.",
