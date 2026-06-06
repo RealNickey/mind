@@ -16,9 +16,23 @@ interface MasonryGridProps {
   onPaste?: (text: string) => void;
   isPasting?: boolean;
   onAddClick?: () => void;
+  spaces?: { id: string; name: string }[];
+  onMoveToSpace?: (item: Item, spaceId: string | null) => void;
 }
 
-export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI, onPaste, isPasting, onAddClick }: MasonryGridProps) {
+export default function MasonryGrid({
+  items,
+  onExpand,
+  onEdit,
+  onDelete,
+  onCanvas,
+  onInspectAI,
+  onPaste,
+  isPasting,
+  onAddClick,
+  spaces,
+  onMoveToSpace,
+}: MasonryGridProps) {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
@@ -134,6 +148,8 @@ export default function MasonryGrid({ items, onExpand, onEdit, onDelete, onCanva
             onDelete={onDelete}
             onCanvas={onCanvas}
             onInspectAI={onInspectAI}
+            spaces={spaces}
+            onMoveToSpace={onMoveToSpace}
           />
         </div>
       ))}

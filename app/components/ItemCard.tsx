@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Copy, Edit2, Trash2 } from "lucide-react";
+import { Copy, Edit2, Trash2, Layers, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
 
@@ -12,6 +12,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from "@/components/ui/context-menu";
 
 export interface ItemCardItem {
@@ -25,6 +28,7 @@ export interface ItemCardItem {
   createdAt: string | Date;
   metadata?: PreviewItem['metadata'];
   tags?: { id: string; name: string }[];
+  collections?: { id: string; name: string }[];
 }
 
 interface ItemCardProps {
@@ -35,6 +39,8 @@ interface ItemCardProps {
   onDelete?: (item: ItemCardItem) => void;
   onCanvas?: (item: ItemCardItem) => void;
   onInspectAI?: (item: ItemCardItem) => void;
+  spaces?: { id: string; name: string }[];
+  onMoveToSpace?: (item: ItemCardItem, spaceId: string | null) => void;
 }
 
 // Each card type gets a distinct border-radius personality
@@ -97,7 +103,17 @@ function getTypeAccent(type: string): string {
   }
 }
 
-export default function ItemCard({ item, index = 0, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: ItemCardProps) {
+export default function ItemCard({
+  item,
+  index = 0,
+  onExpand,
+  onEdit,
+  onDelete,
+  onCanvas,
+  onInspectAI,
+  spaces,
+  onMoveToSpace,
+}: ItemCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const parsedDate = new Date(item.createdAt);
@@ -107,6 +123,11 @@ export default function ItemCard({ item, index = 0, onExpand, onEdit, onDelete, 
 
   const shape = getCardShape(item.type);
   const accent = getTypeAccent(item.type);
+
+  const currentSpace = item.collections?.find(
+    (c) => c.name.startsWith("Space:") || c.name.startsWith("Session:")
+  );
+  const currentSpaceId = currentSpace?.id ?? null;
 
   return (
     <ContextMenu>
@@ -162,6 +183,48 @@ export default function ItemCard({ item, index = 0, onExpand, onEdit, onDelete, 
           <span>Copy Link</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
+        {spaces && spaces.length > 0 && (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Layers className="mr-2 h-4 w-4" />
+                <span>Move to Space</span>
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                <ContextMenuItem
+                  onClick={() => onMoveToSpace?.(item, null)}
+                  disabled={currentSpaceId === null}
+                >
+                  {currentSpaceId === null ? (
+                    <Check className="mr-2 h-4 w-4" />
+                  ) : (
+                    <div className="w-6" />
+                  )}
+                  <span>Main Mind</span>
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                {spaces.map((space) => {
+                  const isCurrent = currentSpaceId === space.id;
+                  return (
+                    <ContextMenuItem
+                      key={space.id}
+                      onClick={() => onMoveToSpace?.(item, space.id)}
+                      disabled={isCurrent}
+                    >
+                      {isCurrent ? (
+                        <Check className="mr-2 h-4 w-4" />
+                      ) : (
+                        <div className="w-6" />
+                      )}
+                      <span>{space.name.replace(/^(Space:|Session:)/, "")}</span>
+                    </ContextMenuItem>
+                  );
+                })}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuItem className="text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50" onClick={() => onDelete?.(item)}>
           <Trash2 className="mr-2 h-4 w-4" />
           <span>Delete</span>

@@ -231,6 +231,39 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     }
   });
 
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ id, collectionId }: { id: string; collectionId: string | null }) => {
+      const res = await fetch(`/api/items/${id}/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionId })
+      });
+      if (!res.ok) throw new Error("Failed to move item to space");
+      return res.json();
+    },
+    onSuccess: (updatedItem, { id, collectionId }) => {
+      const currentActiveSpaceId = activeSpace?.id || null;
+      if (collectionId !== currentActiveSpaceId) {
+        queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: Item[]) => page.filter(item => item.id !== id))
+          };
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+    onError: () => {
+      setError("Failed to move item.");
+    }
+  });
+
+  const handleMoveToSpace = (item: Item, collectionId: string | null) => {
+    moveItemMutation.mutate({ id: item.id, collectionId });
+  };
+
   // Spaces and Settings Mutations
   const createSpaceMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -536,6 +569,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
             onDelete={handleDelete}
             onCanvas={handleCanvas}
             onInspectAI={handleInspectAI}
+            spaces={spaceCollections}
+            onMoveToSpace={handleMoveToSpace}
           />
         ) : (
           <>
@@ -562,6 +597,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
                 onPaste={handlePaste}
                 isPasting={addItemMutation.isPending}
                 onAddClick={() => setIsAddOpen(true)}
+                spaces={spaceCollections}
+                onMoveToSpace={handleMoveToSpace}
               />
             )}
  

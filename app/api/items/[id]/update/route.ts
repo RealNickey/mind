@@ -9,6 +9,7 @@ const updateItemSchema = z.object({
   description: z.string().optional(),
   content: z.string().optional(),
   type: z.string().trim().min(1).optional(),
+  collectionId: z.string().nullable().optional(),
 });
 
 export async function PUT(
@@ -22,23 +23,57 @@ export async function PUT(
       return parsedBody.response;
     }
 
-    const { title, description, content, type } = parsedBody.data;
+    const { title, description, content, type, collectionId } = parsedBody.data;
 
-    const { data: item, error } = await db
-      .from('Item')
-      .update({
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(content !== undefined && { content }),
-        ...(type && { type }),
-      })
-      .eq('id', resolvedParams.id)
-      .select('id')
-      .single();
+    const hasItemUpdates = title !== undefined || description !== undefined || content !== undefined || type !== undefined;
 
-    if (error) throw error;
+    if (hasItemUpdates) {
+      const { error } = await db
+        .from('Item')
+        .update({
+          ...(title && { title }),
+          ...(description !== undefined && { description }),
+          ...(content !== undefined && { content }),
+          ...(type && { type }),
+        })
+        .eq('id', resolvedParams.id);
 
-    const hydratedItem = await getItemByIdWithRelations(item.id);
+      if (error) throw error;
+    }
+
+    if (collectionId !== undefined) {
+      // Get all custom space/session collections
+      const { data: spaces, error: spacesError } = await db
+        .from('Collection')
+        .select('id')
+        .or('name.like.Space:%,name.like.Session:%');
+
+      if (spacesError) throw spacesError;
+
+      const spaceIds = (spaces ?? []).map((s) => s.id);
+
+      if (spaceIds.length > 0) {
+        // Delete existing linkages to any spaces
+        const { error: deleteError } = await db
+          .from('_CollectionToItem')
+          .delete()
+          .eq('B', resolvedParams.id)
+          .in('A', spaceIds);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // If collectionId is non-null, link it to the new space
+      if (collectionId !== null) {
+        const { error: linkError } = await db
+          .from('_CollectionToItem')
+          .upsert({ A: collectionId, B: resolvedParams.id }, { onConflict: 'A,B' });
+
+        if (linkError) throw linkError;
+      }
+    }
+
+    const hydratedItem = await getItemByIdWithRelations(resolvedParams.id);
     if (!hydratedItem) {
       return NextResponse.json({ error: 'Item not found after update' }, { status: 404 });
     }

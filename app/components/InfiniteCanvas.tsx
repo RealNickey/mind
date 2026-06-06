@@ -16,9 +16,20 @@ interface InfiniteCanvasProps {
   onDelete?: (item: ItemCardItem) => void;
   onCanvas?: (item: ItemCardItem) => void;
   onInspectAI?: (item: ItemCardItem) => void;
+  spaces?: { id: string; name: string }[];
+  onMoveToSpace?: (item: ItemCardItem, spaceId: string | null) => void;
 }
 
-export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCanvas, onInspectAI }: InfiniteCanvasProps) {
+export default function InfiniteCanvas({
+  items,
+  onExpand,
+  onEdit,
+  onDelete,
+  onCanvas,
+  onInspectAI,
+  spaces,
+  onMoveToSpace,
+}: InfiniteCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = React.useState(false);
 
@@ -147,6 +158,8 @@ export default function InfiniteCanvas({ items, onExpand, onEdit, onDelete, onCa
                       onDelete={onDelete}
                       onCanvas={onCanvas}
                       onInspectAI={onInspectAI}
+                      spaces={spaces}
+                      onMoveToSpace={onMoveToSpace}
                     />
                   </div>
                 ))}
