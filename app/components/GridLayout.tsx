@@ -146,17 +146,6 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
 
   const items = dedupeById(data?.pages.flat() || []);
 
-  const addPastedItemMutation = useMutation({
-    mutationFn: async (trimmed: string) => {
-      const isUrl = /^https?:\/\//i.test(trimmed);
-      const payload: CreateItemPayload = {
-        title: isUrl ? trimmed : trimmed.slice(0, 80),
-        description: isUrl ? undefined : trimmed.slice(0, 280),
-        content: isUrl ? undefined : trimmed,
-        type: isUrl ? undefined : 'note',
-        sourceUrl: isUrl ? trimmed : undefined,
-        collectionId: activeSession?.id || undefined,
-      };
   const addItemMutation = useMutation({
     mutationFn: async (payload: CreateItemPayload) => {
       return createItem(payload);
@@ -204,9 +193,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
         content: isUrl ? undefined : trimmed,
         type: isUrl ? undefined : 'note',
         sourceUrl: isUrl ? trimmed : undefined,
+        collectionId: activeSession?.id || undefined,
       });
     }
-  }, [addItemMutation]);
+  }, [addItemMutation, activeSession]);
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
@@ -882,7 +872,10 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onSave={async (payload) => {
-          await addItemMutation.mutateAsync(payload);
+          await addItemMutation.mutateAsync({
+            ...payload,
+            collectionId: activeSession?.id || undefined,
+          });
         }}
       />
     </div>
