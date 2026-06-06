@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Copy, Edit2, Trash2, Layers, Check } from "lucide-react";
+import { Copy, Edit2, Trash2, Layers, Check, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
 
@@ -128,6 +128,88 @@ export default function ItemCard({
     (c) => c.name.startsWith("Space:") || c.name.startsWith("Session:")
   );
   const currentSpaceId = currentSpace?.id ?? null;
+
+  const [elapsed, setElapsed] = useState(() => {
+    const createdTime = new Date(item.createdAt).getTime();
+    return Math.floor((Date.now() - createdTime) / 1000);
+  });
+
+  const [enriching, setEnriching] = useState(() => {
+    if (item.type?.toLowerCase() !== 'link' && !item.sourceUrl) {
+      return false;
+    }
+    const createdTime = new Date(item.createdAt).getTime();
+    const isRecent = (Date.now() - createdTime) < 25000;
+    if (!isRecent) return false;
+    const hasMetadata = (!!item.metadata && (!!item.metadata.imageUrl || !!item.metadata.favicon)) || !!item.description;
+    const isTitleUrl = item.title === item.sourceUrl || /^https?:\/\//i.test(item.title);
+    return !hasMetadata || isTitleUrl;
+  });
+
+  useEffect(() => {
+    if (!enriching) return;
+
+    const interval = setInterval(() => {
+      const createdTime = new Date(item.createdAt).getTime();
+      const currentElapsed = Math.floor((Date.now() - createdTime) / 1000);
+      setElapsed(currentElapsed);
+
+      // Check if it's still enriching
+      const stillRecent = currentElapsed < 25;
+      const hasMetadata = (!!item.metadata && (!!item.metadata.imageUrl || !!item.metadata.favicon)) || !!item.description;
+      const isTitleUrl = item.title === item.sourceUrl || /^https?:\/\//i.test(item.title);
+      const isStillEnriching = stillRecent && (!hasMetadata || isTitleUrl);
+
+      setEnriching(isStillEnriching);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [item, enriching]);
+
+  if (enriching) {
+    let statusMessage = "Saving link to MyMind...";
+    if (elapsed >= 5 && elapsed < 12) {
+      statusMessage = "Extracting page details...";
+    } else if (elapsed >= 12 && elapsed < 20) {
+      statusMessage = "Generating tags & screenshot...";
+    } else if (elapsed >= 20) {
+      statusMessage = "Finalizing thought...";
+    }
+
+    return (
+      <motion.div
+        layout
+        layoutId={`item-${item.id}`}
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          opacity: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+          y: { type: "spring", stiffness: 80, damping: 15 },
+          scale: { type: "spring", stiffness: 80, damping: 15 },
+        }}
+        className="item-card-glass relative flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden h-[180px] w-full"
+        style={{
+          borderRadius: shape,
+          backgroundColor: 'rgba(255,255,255,0.45)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1.5px dashed rgba(255,201,75,0.4)',
+          boxShadow: '0 4px 20px -6px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/5 via-transparent to-primary/5 animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
+          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 font-heading animate-pulse">
+            {statusMessage}
+          </span>
+          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono truncate max-w-[240px]">
+            {item.sourceUrl || item.title}
+          </span>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <ContextMenu>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -148,7 +148,25 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
     : null;
   const displayError = error ?? itemsErrorMessage;
 
-  const items = dedupeById(data?.pages.flat() || []);
+  const { data: recentItems } = useQuery<Item[]>({
+    queryKey: ['recent-items', activeSpace?.id],
+    queryFn: async ({ signal }) => {
+      return listItems({
+        limit: 10,
+        offset: 0,
+        collectionId: activeSpace?.id || undefined,
+        signal,
+      });
+    },
+    refetchInterval: 4000,
+    enabled: viewMode === "grid" && !debouncedSearch,
+  });
+
+  const items = useMemo(() => {
+    const infItems = data?.pages.flat() || [];
+    const merged = [...(recentItems ?? []), ...infItems];
+    return dedupeById(merged);
+  }, [data, recentItems]);
 
   const addItemMutation = useMutation({
     mutationFn: async (payload: CreateItemPayload) => {

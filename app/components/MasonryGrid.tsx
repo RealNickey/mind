@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Masonry from "react-masonry-css";
+import { motion } from "framer-motion";
 import ItemCard, { type ItemCardItem } from "./ItemCard";
 
 type Item = ItemCardItem;
@@ -135,10 +136,16 @@ export default function MasonryGrid({
       </div>
 
       {items.map((item, index) => (
-        <div
+        <motion.div
+          layout
           key={item.id}
           className="mb-5"
           style={item.type?.toLowerCase() === 'music' ? { overflow: 'visible' } : undefined}
+          transition={{
+            type: "spring",
+            stiffness: 100,
+            damping: 18,
+          }}
         >
           <ItemCard
             item={item}
@@ -151,7 +158,7 @@ export default function MasonryGrid({
             spaces={spaces}
             onMoveToSpace={onMoveToSpace}
           />
-        </div>
+        </motion.div>
       ))}
     </Masonry>
   );
