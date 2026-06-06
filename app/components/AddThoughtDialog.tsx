@@ -213,12 +213,13 @@ export default function AddThoughtDialog({ isOpen, onClose, onSave }: AddThought
         };
       }
 
-      await onSave(payload);
       onClose();
+      onSave(payload).catch((err) => {
+        console.error("Save failed in background:", err);
+      });
     } catch (err: any) {
       console.error("Save failed:", err);
       setError(err?.message || "An error occurred while saving your thought.");
-    } finally {
       setIsSaving(false);
     }
   };
