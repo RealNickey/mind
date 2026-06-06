@@ -2,7 +2,7 @@ import React from 'react';
 import PreviewImage from './PreviewImage';
 
 export default function VideoPreview({ url, thumbnail, title, duration }: { url?: string, thumbnail?: string, title?: string, duration?: string }) {
-  const isDirectVideo = url?.match(/\.(mp4|webm|ogg)$/i);
+  const isDirectVideo = url?.match(/\.(mp4|webm|ogg)$/i) || url?.startsWith('data:video/');
 
   if (isDirectVideo) {
     return (
