@@ -70,7 +70,7 @@ function getMessageSources(message: ChatMessageLike): MessageSource[] {
   return [];
 }
 
-export function AIChat() {
+export function AIChat({ activeSessionId }: { activeSessionId?: string }) {
   const { messages, sendMessage: sendChatMessage, status, error } = useChat();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -94,7 +94,7 @@ export function AIChat() {
 
     const userMsg = input.trim();
     setInput('');
-    await sendChatMessage({ text: userMsg });
+    await sendChatMessage({ text: userMsg }, { body: { collectionId: activeSessionId || null } });
   };
 
   return (
