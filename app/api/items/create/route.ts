@@ -57,27 +57,6 @@ export async function POST(req: Request) {
     const rawSourceUrl = sourceUrl ?? url;
     const normalizedSourceUrl = rawSourceUrl ? (normalizeSourceUrl(rawSourceUrl) ?? rawSourceUrl) : undefined;
 
-    let extractedMetadata: Awaited<ReturnType<typeof extractUrlMetadata>> | null = null;
-    let linkHealthResult: Awaited<ReturnType<typeof checkLinkHealth>> | null = null;
-    let archiveSnapshot: Awaited<ReturnType<typeof captureArchiveSnapshot>> | null = null;
-
-    if (normalizedSourceUrl) {
-      [extractedMetadata, linkHealthResult, archiveSnapshot] = await Promise.all([
-        extractUrlMetadata(normalizedSourceUrl).catch((metadataError) => {
-          console.warn('Metadata extraction failed during capture:', metadataError);
-          return null;
-        }),
-        checkLinkHealth(normalizedSourceUrl).catch((healthError) => {
-          console.warn('Link health check failed during capture:', healthError);
-          return null;
-        }),
-        captureArchiveSnapshot(normalizedSourceUrl).catch((archiveError) => {
-          console.warn('Archive snapshot capture failed during save:', archiveError);
-          return null;
-        }),
-      ]);
-    }
-
     const detectedType = normalizedSourceUrl
       ? detectContentType(normalizedSourceUrl, null)
       : 'note';
@@ -90,11 +69,10 @@ export async function POST(req: Request) {
 
     const normalizedTitle =
       title ??
-      extractedMetadata?.title ??
       normalizedSourceUrl ??
       'Untitled item';
 
-    const normalizedDescription = description ?? extractedMetadata?.description ?? undefined;
+    const normalizedDescription = description ?? undefined;
     const normalizedContent = content ?? normalizedText;
     const normalizedUserId = userId;
 
@@ -113,25 +91,13 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
-    const normalizedImageUrl = imageUrl ?? image ?? extractedMetadata?.image ?? undefined;
-    const normalizedFavicon = favicon ?? extractedMetadata?.favicon ?? undefined;
+    const normalizedImageUrl = imageUrl ?? image ?? undefined;
+    const normalizedFavicon = favicon ?? undefined;
 
     const customDataPayload: Record<string, unknown> = {
       ...(customData ?? {}),
       ...(normalizedText ? { extractedText: normalizedText } : {}),
       ...(normalizedSourceUrl ? { normalizedSourceUrl } : {}),
-      ...(linkHealthResult
-        ? {
-            linkHealth: linkHealthResult,
-            linkHealthHistory: [linkHealthResult],
-          }
-        : {}),
-      ...(archiveSnapshot
-        ? {
-            archiveSnapshotLatest: archiveSnapshot,
-            archiveSnapshots: [archiveSnapshot],
-          }
-        : {}),
     };
 
     const hasCustomData = Object.keys(customDataPayload).length > 0;
@@ -214,6 +180,93 @@ export async function POST(req: Request) {
     void autoCreateSemanticLinks(item.id).catch((autoLinkError) => {
       console.error('Auto semantic link generation failed:', autoLinkError);
     });
+
+    if (normalizedSourceUrl) {
+      // Fire-and-forget background execution
+      void (async () => {
+        try {
+          const [extractedMetadata, linkHealthResult, archiveSnapshot] = await Promise.all([
+            extractUrlMetadata(normalizedSourceUrl).catch((metadataError) => {
+              console.warn('Background metadata extraction failed:', metadataError);
+              return null;
+            }),
+            checkLinkHealth(normalizedSourceUrl).catch((healthError) => {
+              console.warn('Background link health check failed:', healthError);
+              return null;
+            }),
+            captureArchiveSnapshot(normalizedSourceUrl).catch((archiveError) => {
+              console.warn('Background archive snapshot capture failed:', archiveError);
+              return null;
+            }),
+          ]);
+
+          // Update item's title/description/type if not explicitly set initially
+          const itemUpdates: { title?: string; description?: string; type?: string } = {};
+          if (!title && extractedMetadata?.title) {
+            itemUpdates.title = extractedMetadata.title;
+          }
+          if (!description && extractedMetadata?.description) {
+            itemUpdates.description = extractedMetadata.description;
+          }
+          if (extractedMetadata?.contentType && extractedMetadata.contentType !== 'unknown') {
+            itemUpdates.type = extractedMetadata.contentType;
+          }
+
+          if (Object.keys(itemUpdates).length > 0) {
+            await db
+              .from('Item')
+              .update(itemUpdates)
+              .eq('id', item.id);
+          }
+
+          // Update metadata row with background results
+          const { data: existingMeta } = await db
+            .from('ItemMetadata')
+            .select('*')
+            .eq('itemId', item.id)
+            .maybeSingle();
+
+          const existingCustomData = (existingMeta?.customData as Record<string, unknown>) ?? {};
+
+          const bgImageUrl = imageUrl ?? image ?? extractedMetadata?.image ?? undefined;
+          const bgFavicon = favicon ?? extractedMetadata?.favicon ?? undefined;
+          const bgDescription = description ?? extractedMetadata?.description ?? undefined;
+
+          const updatedCustomData = {
+            ...existingCustomData,
+            ...(linkHealthResult
+              ? {
+                  linkHealth: linkHealthResult,
+                  linkHealthHistory: [linkHealthResult],
+                }
+              : {}),
+            ...(archiveSnapshot
+              ? {
+                  archiveSnapshotLatest: archiveSnapshot,
+                  archiveSnapshots: [archiveSnapshot],
+                }
+              : {}),
+          };
+
+          const metadataPayload: ItemMetadataInsert = {
+            itemId: item.id,
+            sourceUrl: normalizedSourceUrl,
+            ...(bgImageUrl && { imageUrl: bgImageUrl }),
+            ...(bgDescription && { preview: bgDescription.slice(0, 300) }),
+            ...(bgFavicon && { favicon: bgFavicon }),
+            customData: updatedCustomData as ItemMetadataInsert['customData'],
+          };
+
+          await db
+            .from('ItemMetadata')
+            .upsert(metadataPayload, { onConflict: 'itemId' });
+
+          console.log(`Background metadata and archive processing completed for item: ${item.id}`);
+        } catch (bgError) {
+          console.error(`Background processing failed for item ${item.id}:`, bgError);
+        }
+      })();
+    }
 
     const hydratedItem = await getItemByIdWithRelations(item.id);
     return NextResponse.json(hydratedItem ?? item);
