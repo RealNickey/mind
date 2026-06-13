@@ -8,6 +8,7 @@ import ItemPreview from "./previews/ItemPreview";
 import { ImageAnalysis } from "./ImageAnalysis";
 import PlaceMap from "./PlaceMap";
 import { MusicModalUI } from "./MusicModalUI";
+import { MarkdownEditor } from "./MarkdownEditor";
 import type { ItemCardItem } from "./ItemCard";
 import { getDisplayDomain, getYouTubeEmbedUrl } from "@/app/lib/url-utils";
 import { getMusicProvider } from "@/app/lib/music";
@@ -419,11 +420,9 @@ export default function ItemViewDialog({ item, isOpen, onClose, onDelete }: Item
                         <span>MIND NOTES</span>
                         <span className="cursor-help text-zinc-300 dark:text-zinc-600" title="Your personal thoughts on this item">?</span>
                       </div>
-                      <textarea
-                        className="w-full min-h-[140px] max-h-[220px] rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 p-4 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-300 dark:focus:ring-zinc-700 placeholder-zinc-400 dark:placeholder-zinc-600 resize-none font-sans flex-1"
-                        placeholder="Type here to add a note..."
+                      <MarkdownEditor
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        onChange={(val) => setContent(val)}
                         onBlur={() => handleSaveContent(content)}
                       />
                     </div>
