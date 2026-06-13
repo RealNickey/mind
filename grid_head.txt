@@ -1,0 +1,300 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import MasonryGrid from "./MasonryGrid";
+import type { ItemCardItem } from "./ItemCard";
+import { Search, LayoutTemplate, Loader2, Bot, Brain, Layers, Settings, Check, Plus, Trash2, Edit2, X, Sliders, Keyboard, Trash, Sparkles } from "lucide-react";
+import InfiniteCanvas from "./InfiniteCanvas";
+import { AIChat } from "./AIChat";
+import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
+import ItemViewDialog from "./ItemViewDialog";
+import AddThoughtDialog from "./AddThoughtDialog";
+import ThemeToggle from "./ThemeToggle";
+import { createItem, deleteItem, listItems, type CreateItemPayload } from "@/app/lib/api-client/items";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { listCollections, createCollection, deleteCollection, type CollectionListItem } from "@/app/lib/api-client/collections";
+import { useTheme } from "next-themes";
+
+type Item = ItemCardItem;
+type ItemPages = InfiniteData<Item[], number>;
+
+interface GridLayoutProps {
+  initialItems: Item[];
+  pageSize?: number;
+}
+
+const DEFAULT_PAGE_SIZE = 24;
+
+function dedupeById(items: Item[]): Item[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) {
+      return false;
+    }
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function getSpaceName(name: string): string {
+  return name.replace(/^(Space:|Session:)/, "");
+}
+
+export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE }: GridLayoutProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [showAssistant, setShowAssistant] = useState(false);
+  const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
+  const [expandedItem, setExpandedItem] = useState<Item | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
+  const [serendipityMode, setSerendipityMode] = useState(false);
+  const [serendipityIndex, setSerendipityIndex] = useState(0);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
+  // Spaces and Settings States
+  const [activeSpace, setActiveSpace] = useState<CollectionListItem | null>(null);
+  const [showSpacesDropdown, setShowSpacesDropdown] = useState(false);
+  const [newSpaceName, setNewSpaceName] = useState("");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"general" | "spaces" | "shortcuts" | "danger">("general");
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined') {
+      const savedSpace = localStorage.getItem("mind_active_space");
+      if (savedSpace) {
+        try {
+          setActiveSpace(JSON.parse(savedSpace));
+        } catch (e) {
+          console.error("Failed to parse active space from localStorage", e);
+        }
+      }
+    }
+  }, []);
+
+  const changeSpace = (space: CollectionListItem | null) => {
+    setActiveSpace(space);
+    if (typeof window !== 'undefined') {
+      if (space) {
+        localStorage.setItem("mind_active_space", JSON.stringify(space));
+      } else {
+        localStorage.removeItem("mind_active_space");
+      }
+    }
+    setShowSpacesDropdown(false);
+  };
+
+  const { data: collections = [], refetch: refetchCollections } = useQuery<CollectionListItem[]>({
+    queryKey: ['collections'],
+    queryFn: ({ signal }) => listCollections(signal),
+  });
+
+  const spaceCollections = collections.filter(c => c.name.startsWith("Space:") || c.name.startsWith("Session:"));
+
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error: itemsQueryError,
+  } = useInfiniteQuery({
+    queryKey: ['items', debouncedSearch, activeSpace?.id],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0, signal }) => {
+      return listItems({
+        limit: pageSize,
+        offset: Number(pageParam),
+        collectionId: activeSpace?.id || undefined,
+        q: debouncedSearch || undefined,
+        signal,
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < pageSize) return undefined;
+      return allPages.reduce((acc, page) => acc + page.length, 0);
+    },
+    initialData: () => {
+      if (!debouncedSearch && !activeSpace) {
+        return {
+          pages: [initialItems],
+          pageParams: [0],
+        };
+      }
+      return undefined;
+    },
+  });
+
+  const itemsErrorMessage = isError
+    ? itemsQueryError instanceof Error
+      ? itemsQueryError.message
+      : "Failed to load items."
+    : null;
+  const displayError = error ?? itemsErrorMessage;
+
+  const { data: recentItems } = useQuery<Item[]>({
+    queryKey: ['recent-items', activeSpace?.id],
+    queryFn: async ({ signal }) => {
+      return listItems({
+        limit: 10,
+        offset: 0,
+        collectionId: activeSpace?.id || undefined,
+        signal,
+      });
+    },
+    refetchInterval: 4000,
+    enabled: viewMode === "grid" && !debouncedSearch,
+  });
+
+  const items = useMemo(() => {
+    const infItems = data?.pages.flat() || [];
+    const merged = [...(recentItems ?? []), ...infItems];
+    return dedupeById(merged);
+  }, [data, recentItems]);
+
+  const addItemMutation = useMutation({
+    mutationFn: async (payload: CreateItemPayload) => {
+      return createItem(payload);
+    },
+    onSuccess: (newItem) => {
+      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
+        if (!old) return old;
+
+        const firstPage = old.pages[0] ?? [];
+        const newPages = [[newItem, ...firstPage], ...old.pages.slice(1)];
+        return { ...old, pages: newPages };
+      });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+    onError: () => {
+      setError("Failed to save content.");
+    }
+  });
+
+  useEffect(() => {
+    if (viewMode !== "grid") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { threshold: 0.6 }
+    );
+    const currentTarget = observerTarget.current;
+    if (currentTarget) observer.observe(currentTarget);
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, viewMode]);
+
+  const handlePaste = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (trimmed) {
+      const isUrl = /^https?:\/\//i.test(trimmed);
+      addItemMutation.mutate({
+        title: isUrl ? trimmed : trimmed.slice(0, 80),
+        description: isUrl ? undefined : trimmed.slice(0, 280),
+        content: isUrl ? undefined : trimmed,
+        type: isUrl ? undefined : 'note',
+        sourceUrl: isUrl ? trimmed : undefined,
+        collectionId: activeSpace?.id || undefined,
+      });
+    }
+  }, [addItemMutation, activeSpace]);
+
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      const text = e.clipboardData?.getData("text/plain");
+      if (text) handlePaste(text);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener("paste", handleGlobalPaste);
+      return () => window.removeEventListener("paste", handleGlobalPaste);
+    }
+  }, [handlePaste]);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteItem(id);
+    },
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: Item[]) => page.filter(item => item.id !== id))
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    }
+  });
+
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ id, collectionId }: { id: string; collectionId: string | null }) => {
+      const res = await fetch(`/api/items/${id}/update`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionId })
+      });
+      if (!res.ok) throw new Error("Failed to move item to space");
+      return res.json();
+    },
+    onSuccess: (updatedItem, { id, collectionId }) => {
+      const currentActiveSpaceId = activeSpace?.id || null;
+      if (collectionId !== currentActiveSpaceId) {
+        queryClient.setQueryData<ItemPages>(['items', debouncedSearch, activeSpace?.id], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: Item[]) => page.filter(item => item.id !== id))
+          };
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+    onError: () => {
+      setError("Failed to move item.");
+    }
+  });
+
+  const handleMoveToSpace = (item: Item, collectionId: string | null) => {
+    moveItemMutation.mutate({ id: item.id, collectionId });
+  };
+
+  // Spaces and Settings Mutations
+  const createSpaceMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return createCollection("Space:" + name);
+    },
+    onSuccess: (newCol) => {
+      refetchCollections();
+      changeSpace(newCol);
+      setNewSpaceName("");
+    },
+    onError: () => {
+      setError("Failed to create space.");
+    }
+  });

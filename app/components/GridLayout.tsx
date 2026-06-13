@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteD
 import { motion, AnimatePresence } from "framer-motion";
 import MasonryGrid from "./MasonryGrid";
 import type { ItemCardItem } from "./ItemCard";
-import { Search, LayoutTemplate, Loader2, Bot, Brain, Layers, Settings, Check, Plus, Trash2, Edit2, X, Sliders, Keyboard, Trash } from "lucide-react";
+import { Search, LayoutTemplate, Loader2, Bot, Brain, Layers, Settings, Check, Plus, Trash2, Edit2, X, Sliders, Keyboard, Trash, Sparkles } from "lucide-react";
 import InfiniteCanvas from "./InfiniteCanvas";
 import { AIChat } from "./AIChat";
 import { ItemQuickAIPanel } from "./ItemQuickAIPanel";
@@ -53,6 +53,8 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
   const [selectedAIItem, setSelectedAIItem] = useState<Item | null>(null);
   const [expandedItem, setExpandedItem] = useState<Item | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "canvas">("grid");
+  const [serendipityMode, setSerendipityMode] = useState(false);
+  const [serendipityIndex, setSerendipityIndex] = useState(0);
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   // Spaces and Settings States
@@ -232,6 +234,47 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
       return () => window.removeEventListener("paste", handleGlobalPaste);
     }
   }, [handlePaste]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // 'n' for new note
+      if (e.key === 'n' && !isInput) {
+        e.preventDefault();
+        setIsAddOpen(true);
+      }
+
+      // Enter or '/' to focus search
+      if ((e.key === 'Enter' || e.key === '/') && !isInput) {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) searchInput.focus();
+      }
+
+      // Left/Right arrow to navigate between expanded cards
+      if (!serendipityMode && expandedItem && !isInput && items.length > 0) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const currentIndex = items.findIndex(item => item.id === expandedItem.id);
+          if (currentIndex !== -1) {
+            setExpandedItem(items[(currentIndex + 1) % items.length]);
+          }
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const currentIndex = items.findIndex(item => item.id === expandedItem.id);
+          if (currentIndex !== -1) {
+            setExpandedItem(items[(currentIndex - 1 + items.length) % items.length]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [expandedItem, items, serendipityMode]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -570,6 +613,28 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
               <TooltipContent>Canvas View</TooltipContent>
             </Tooltip>
 
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className={`p-2 rounded-full transition-all duration-150 active-sink ${
+                    serendipityMode
+                      ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+                  }`}
+                  onClick={() => {
+                    setSerendipityMode(!serendipityMode);
+                    if (!serendipityMode && items.length > 0) {
+                      setSerendipityIndex(Math.floor(Math.random() * items.length));
+                    }
+                  }}
+                  aria-label="Toggle serendipity mode"
+                >
+                  <Sparkles size={15} aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Serendipity Mode</TooltipContent>
+            </Tooltip>
+
             <div className="h-4 w-px bg-foreground/10 mx-0.5" />
 
             <ThemeToggle />
@@ -669,6 +734,86 @@ export default function GridLayout({ initialItems, pageSize = DEFAULT_PAGE_SIZE 
         onClose={() => setSelectedAIItem(null)}
       />
  
+
+      {serendipityMode && items.length > 0 && (
+        <div className="fixed inset-0 z-[60] bg-zinc-950 flex flex-col items-center justify-center p-8">
+          <div className="absolute top-8 right-8 z-[70]">
+            <button
+              onClick={() => setSerendipityMode(false)}
+              className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all duration-150 active:scale-[0.95]"
+              title="Close (Esc)"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="w-full max-w-4xl h-[80vh] bg-transparent flex items-center justify-center relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={items[serendipityIndex].id}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="w-full h-full cursor-pointer flex flex-col items-center justify-center"
+                onClick={() => setExpandedItem(items[serendipityIndex])}
+              >
+                {/* Visual representation depending on item type */}
+                <div className="w-full max-w-2xl bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 p-8 flex flex-col items-center justify-center min-h-[400px]">
+                  {items[serendipityIndex].metadata?.imageUrl ? (
+                    <div className="relative w-full h-64 mb-8 rounded-xl overflow-hidden shadow-inner">
+                      <img
+                        src={items[serendipityIndex].metadata!.imageUrl!}
+                        alt={items[serendipityIndex].title || 'Preview'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : items[serendipityIndex].sourceUrl && /^https?:\/\//i.test(items[serendipityIndex].sourceUrl!) && items[serendipityIndex].type === 'link' ? (
+                     <div className="w-full h-64 bg-zinc-800 rounded-xl flex items-center justify-center mb-8 shadow-inner overflow-hidden">
+                       <LayoutTemplate className="w-12 h-12 text-zinc-600" />
+                     </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-2xl bg-zinc-800 flex items-center justify-center mb-8 shadow-inner">
+                      <Layers className="w-10 h-10 text-zinc-600" />
+                    </div>
+                  )}
+
+                  <h2 className="text-3xl md:text-4xl font-bold text-center text-white mb-4 leading-tight font-serif">
+                    {items[serendipityIndex].title || 'Untitled'}
+                  </h2>
+
+                  {(items[serendipityIndex].description || items[serendipityIndex].content) && (
+                    <p className="text-zinc-400 text-center max-w-xl text-lg md:text-xl line-clamp-4 leading-relaxed">
+                      {items[serendipityIndex].description || items[serendipityIndex].content}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="absolute bottom-12 flex items-center gap-6 z-[70]">
+            <button
+              onClick={() => setSerendipityIndex((prev) => (prev - 1 + items.length) % items.length)}
+              className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all active:scale-[0.95]"
+              title="Previous (Left Arrow)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <span className="text-zinc-500 font-mono text-sm uppercase tracking-widest font-semibold">
+              {serendipityIndex + 1} / {items.length}
+            </span>
+            <button
+              onClick={() => setSerendipityIndex((prev) => (prev + 1) % items.length)}
+              className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all active:scale-[0.95]"
+              title="Next (Right Arrow)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <ItemViewDialog
         item={expandedItem}
         isOpen={Boolean(expandedItem)}
