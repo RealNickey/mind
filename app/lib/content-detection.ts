@@ -158,7 +158,8 @@ export function detectContentType(url: string, metadata: DetectionMetadata): Con
     return 'link';
   } catch {
     // If URL parsing fails, might be direct text/note content
-    if (url.startsWith('#') || url.includes('rgb') || url.includes('hsl')) return 'color';
+    const colorMatcher = /(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)|(?:rgba?|hsla?)\([^)]+\)/i;
+    if (colorMatcher.test(url)) return 'color';
     return 'note';
   }
 }

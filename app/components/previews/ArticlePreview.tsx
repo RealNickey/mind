@@ -1,7 +1,59 @@
 import React from 'react';
 import PreviewImage from './PreviewImage';
 
-export default function ArticlePreview({ title, excerpt, domain, thumbnail, readingTime }: { title: string, excerpt: string, domain: string, thumbnail?: string, readingTime?: string }) {
+export default function ArticlePreview({
+  title,
+  excerpt,
+  domain,
+  thumbnail,
+  readingTime,
+  isCard = false,
+}: {
+  title: string;
+  excerpt: string;
+  domain: string;
+  thumbnail?: string;
+  readingTime?: string;
+  isCard?: boolean;
+}) {
+  if (isCard) {
+    return (
+      <div className="flex min-h-[220px] flex-col gap-4 p-5">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500 dark:text-zinc-400">
+          <span>{domain}</span>
+          {readingTime && (
+            <span className="tracking-normal text-[10px] normal-case text-zinc-400 dark:text-zinc-500">
+              {readingTime}
+            </span>
+          )}
+        </div>
+
+        <div className={`flex flex-1 ${thumbnail ? 'items-start gap-4' : 'flex-col justify-start gap-3'}`}>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[24px] font-bold text-zinc-950 dark:text-zinc-50 leading-[1.08] line-clamp-2">
+              {title}
+            </h3>
+            <p className="mt-3 text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-300 line-clamp-5">
+              {excerpt}
+            </p>
+          </div>
+
+          {thumbnail && (
+            <div className="relative h-[124px] w-[124px] shrink-0 overflow-hidden rounded-[14px] border border-black/5 dark:border-white/10 bg-zinc-100 dark:bg-zinc-800 shadow-[0_16px_30px_-24px_rgba(0,0,0,0.35)]">
+              <PreviewImage
+                src={thumbnail}
+                alt={title}
+                fill
+                sizes="124px"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col group/preview">
       {thumbnail && (

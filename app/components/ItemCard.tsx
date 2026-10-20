@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Copy, Edit2, Trash2, Layers, Check, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import ItemPreview, { type PreviewItem } from "./previews/ItemPreview";
+import { isWikipediaUrl } from "@/app/lib/url-utils";
 
 import {
   ContextMenu,
@@ -34,6 +35,7 @@ export interface ItemCardItem {
 interface ItemCardProps {
   item: ItemCardItem;
   index?: number;
+  isAboveFold?: boolean;
   onExpand?: (item: ItemCardItem) => void;
   onEdit?: (item: ItemCardItem) => void;
   onDelete?: (item: ItemCardItem) => void;
@@ -51,7 +53,7 @@ function getCardShape(type: string): string {
     case 'movie':      return '4px 4px 4px 4px';      // sharp — cinematic frame
     case 'music':      return '8px 8px 8px 8px';      // slight round — sleeve
     case 'book':       return '4px 12px 4px 4px';     // slight right-round — spine feel
-    case 'article':    return '16px 4px 16px 4px';    // editorial rhythm
+    case 'article':    return '10px';                  // rectangular editorial card
     case 'link':       return '12px 12px 12px 12px';  // clean
     case 'quote':      return '0px 20px 0px 20px';    // dramatic opposing
     case 'image':      return '8px';                  // clean image mount
@@ -67,7 +69,7 @@ function getCardShape(type: string): string {
     case 'video':      return '8px';
     case 'pdf':        return '8px 16px 8px 16px';
     case 'property':   return '12px';
-    case 'wikipedia':  return '4px';
+    case 'wikipedia':  return '18px';
     case 'highlight':  return '0px 16px 0px 16px';
     default:           return '12px';
   }
@@ -106,6 +108,7 @@ function getTypeAccent(type: string): string {
 export default function ItemCard({
   item,
   index = 0,
+  isAboveFold,
   onExpand,
   onEdit,
   onDelete,
@@ -121,8 +124,34 @@ export default function ItemCard({
     ? "Recently"
     : format(parsedDate, "MMM d, yyyy");
 
-  const shape = getCardShape(item.type);
-  const accent = getTypeAccent(item.type);
+  const normalizedType = item.type?.toLowerCase() ?? '';
+  const sourceUrl = item.metadata?.sourceUrl ?? item.sourceUrl;
+  const isWikipediaSource = isWikipediaUrl(sourceUrl);
+  const isWikipedia = normalizedType === 'wikipedia' || ((normalizedType === 'article' || normalizedType === 'link') && isWikipediaSource);
+  const shape = getCardShape(isWikipedia ? 'wikipedia' : normalizedType);
+  const accent = getTypeAccent(isWikipedia ? 'wikipedia' : normalizedType);
+  const imageLoading = isAboveFold ? 'eager' : undefined;
+
+  const cardStyle = isWikipedia
+    ? {
+        borderRadius: shape,
+        backgroundColor: 'var(--wiki-card-bg)',
+        border: '1px solid var(--wiki-card-border)',
+        boxShadow: 'var(--wiki-card-shadow)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        transition: 'border-color 220ms cubic-bezier(0.23,1,0.32,1), box-shadow 220ms cubic-bezier(0.23,1,0.32,1), transform 220ms cubic-bezier(0.23,1,0.32,1)',
+      }
+    : {
+        borderRadius: shape,
+        // Base: glass panel styling
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        border: '1.5px solid rgba(255,255,255,0.3)',
+        boxShadow: '0 4px 24px -8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)',
+        transition: 'border-color 220ms cubic-bezier(0.23,1,0.32,1), box-shadow 220ms cubic-bezier(0.23,1,0.32,1), transform 220ms cubic-bezier(0.23,1,0.32,1)',
+      };
 
   const currentSpace = item.collections?.find(
     (c) => c.name.startsWith("Space:") || c.name.startsWith("Session:")
@@ -224,17 +253,8 @@ export default function ItemCard({
             opacity: { duration: 0.25, ease: [0.23, 1, 0.32, 1], delay: Math.min(index * 0.045, 0.35) },
             y: { type: "spring", stiffness: 380, damping: 28, delay: Math.min(index * 0.045, 0.35) },
           }}
-          className={`item-card-glass group relative flex flex-col cursor-pointer ${item.type?.toLowerCase() === 'music' ? 'overflow-visible' : 'overflow-hidden'}`}
-          style={{
-            borderRadius: shape,
-            // Base: glass panel styling
-            backgroundColor: 'rgba(255,255,255,0.5)',
-            backdropFilter: 'blur(24px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-            border: `1.5px solid rgba(255,255,255,0.3)`,
-            boxShadow: '0 4px 24px -8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)',
-            transition: 'border-color 220ms cubic-bezier(0.23,1,0.32,1), box-shadow 220ms cubic-bezier(0.23,1,0.32,1), transform 220ms cubic-bezier(0.23,1,0.32,1)',
-          }}
+          className={`${isWikipedia ? 'item-card-wikipedia' : 'item-card-glass'} group relative flex flex-col cursor-pointer ${item.type?.toLowerCase() === 'music' ? 'overflow-visible' : 'overflow-hidden'}`}
+          style={cardStyle}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={() => onExpand?.(item)}
@@ -243,7 +263,7 @@ export default function ItemCard({
         >
           {/* Content */}
           <div className="pointer-events-none w-full">
-            <ItemPreview item={item} isCard />
+            <ItemPreview item={item} isCard imageLoading={imageLoading} />
           </div>
         </motion.div>
       </ContextMenuTrigger>

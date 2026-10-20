@@ -57,8 +57,30 @@ export async function POST(req: Request) {
     const rawSourceUrl = sourceUrl ?? url;
     const normalizedSourceUrl = rawSourceUrl ? (normalizeSourceUrl(rawSourceUrl) ?? rawSourceUrl) : undefined;
 
-    const detectedType = normalizedSourceUrl
-      ? detectContentType(normalizedSourceUrl, null)
+    let extractedMetadata: Awaited<ReturnType<typeof extractUrlMetadata>> | null = null;
+    let linkHealthResult: Awaited<ReturnType<typeof checkLinkHealth>> | null = null;
+    let archiveSnapshot: Awaited<ReturnType<typeof captureArchiveSnapshot>> | null = null;
+
+    if (normalizedSourceUrl) {
+      [extractedMetadata, linkHealthResult, archiveSnapshot] = await Promise.all([
+        extractUrlMetadata(normalizedSourceUrl).catch((metadataError) => {
+          console.warn('Metadata extraction failed during capture:', metadataError);
+          return null;
+        }),
+        checkLinkHealth(normalizedSourceUrl).catch((healthError) => {
+          console.warn('Link health check failed during capture:', healthError);
+          return null;
+        }),
+        captureArchiveSnapshot(normalizedSourceUrl).catch((archiveError) => {
+          console.warn('Archive snapshot capture failed during save:', archiveError);
+          return null;
+        }),
+      ]);
+    }
+
+    const contentToDetect = normalizedSourceUrl ?? normalizedText ?? title ?? content ?? '';
+    const detectedType = contentToDetect
+      ? detectContentType(contentToDetect, null)
       : 'note';
 
     const requestedType = type?.toLowerCase();

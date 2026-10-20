@@ -230,3 +230,12 @@ export function getYouTubeEmbedUrl(
   const query = params.toString();
   return query ? `${base}?${query}` : base;
 }
+
+export function isWikipediaUrl(url: string | null | undefined): boolean {
+  const hostname = getHostname(url);
+  if (!hostname) {
+    return false;
+  }
+
+  return hostname === 'wikipedia.org' || hostname.endsWith('.wikipedia.org');
+}

@@ -150,6 +150,7 @@ export default function MasonryGrid({
           <ItemCard
             item={item}
             index={index}
+            isAboveFold={index < 6}
             onExpand={onExpand}
             onEdit={onEdit}
             onDelete={onDelete}

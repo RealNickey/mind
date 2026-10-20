@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDisplayDomain } from '@/app/lib/url-utils';
+import { getDisplayDomain, isWikipediaUrl } from '@/app/lib/url-utils';
 import ArticlePreview from './ArticlePreview';
 import BookPreview from './BookPreview';
 import ColorPreview from './ColorPreview';
@@ -150,8 +150,8 @@ function extractHandleFromUrl(url?: string | null): string | undefined {
   }
 }
 
-function extractHexCandidate(...values: Array<string | null | undefined>): string | undefined {
-  const matcher = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/;
+function extractColorCandidate(...values: Array<string | null | undefined>): string | undefined {
+  const matcher = /(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)|(?:rgba?|hsla?)\([^)]+\)/i;
 
   for (const value of values) {
     if (!value) {
@@ -160,28 +160,11 @@ function extractHexCandidate(...values: Array<string | null | undefined>): strin
 
     const match = value.match(matcher);
     if (match) {
-      return match[0].toUpperCase();
+      return match[0];
     }
   }
 
   return undefined;
-}
-
-function hexToRgbString(hex: string): string | undefined {
-  const normalized = hex.replace('#', '');
-  if (!/^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(normalized)) {
-    return undefined;
-  }
-
-  const expanded = normalized.length === 3
-    ? normalized.split('').map((char) => `${char}${char}`).join('')
-    : normalized;
-
-  const red = Number.parseInt(expanded.slice(0, 2), 16);
-  const green = Number.parseInt(expanded.slice(2, 4), 16);
-  const blue = Number.parseInt(expanded.slice(4, 6), 16);
-
-  return `${red}, ${green}, ${blue}`;
 }
 
 function extractTodoItems(content?: string | null, description?: string | null): TodoItem[] {
@@ -229,7 +212,73 @@ function extractIngredients(content?: string | null): string[] {
     .slice(0, 12);
 }
 
-export default function ItemPreview({ item, isCard = false }: { item: PreviewItem; isCard?: boolean }) {
+function looksLikeUrl(value?: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return /^(https?:\/\/|www\.)/i.test(value.trim());
+}
+
+function deriveTitleFromUrl(url?: string | null): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const lastSegment = segments[segments.length - 1];
+
+    if (!lastSegment) {
+      return undefined;
+    }
+
+    const decoded = decodeURIComponent(lastSegment)
+      .replace(/_/g, ' ')
+      .replace(/-/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!decoded) {
+      return undefined;
+    }
+
+    return decoded
+      .split(' ')
+      .map((word) => word ? word[0].toUpperCase() + word.slice(1) : word)
+      .join(' ');
+  } catch {
+    return undefined;
+  }
+}
+
+function getDisplayTitle(item: PreviewItem, sourceUrl?: string | null): string {
+  const rawTitle = item.title?.trim();
+
+  if (rawTitle && !looksLikeUrl(rawTitle)) {
+    return rawTitle;
+  }
+
+  return (
+    deriveTitleFromUrl(sourceUrl) ??
+    getDisplayDomain(sourceUrl, 'Saved link') ??
+    rawTitle ??
+    'Saved link'
+  );
+}
+
+function getArticleExcerpt(item: PreviewItem): string {
+  const source = item.content ?? item.description ?? '';
+  const normalized = source
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalized || 'Saved article';
+}
+
+export default function ItemPreview({ item, isCard = false, imageLoading }: { item: PreviewItem; isCard?: boolean; imageLoading?: 'eager' | 'lazy' }) {
   const metadata = item.metadata ?? null;
   const customData = asObject(metadata?.customData);
 
@@ -238,16 +287,33 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
   const favicon = metadata?.favicon ?? asString(customData?.favicon);
   const normalizedType = item.type.toLowerCase();
   const sourceDomain = getDisplayDomain(sourceUrl, 'saved content') ?? 'saved content';
+  const isWikipediaSource = isWikipediaUrl(sourceUrl);
+  const isWikipediaItem = normalizedType === 'wikipedia' || ((normalizedType === 'article' || normalizedType === 'link') && isWikipediaSource);
+  const displayTitle = getDisplayTitle(item, sourceUrl);
+  const articleExcerpt = getArticleExcerpt(item);
+
+  if (isWikipediaItem) {
+    return (
+      <WikipediaPreview
+        title={displayTitle}
+        excerpt={articleExcerpt}
+        imageUrl={imageUrl ?? undefined}
+        isCard={isCard}
+        imageLoading={imageLoading}
+      />
+    );
+  }
 
   switch (normalizedType) {
     case 'article': {
       return (
         <ArticlePreview
-          title={item.title}
-          excerpt={item.description ?? item.content ?? 'Saved article'}
+          title={displayTitle}
+          excerpt={articleExcerpt}
           domain={sourceDomain}
           thumbnail={imageUrl ?? undefined}
           readingTime={metadata?.readingTime ? `${metadata.readingTime} min read` : undefined}
+          isCard={isCard}
         />
       );
     }
@@ -271,16 +337,6 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
           beds={asNumber(customData?.beds)}
           baths={asNumber(customData?.baths)}
           sqft={asNumber(customData?.sqft)}
-        />
-      );
-    }
-
-    case 'wikipedia': {
-      return (
-        <WikipediaPreview
-          title={item.title}
-          excerpt={item.description ?? item.content ?? 'Wikipedia article'}
-          imageUrl={imageUrl ?? undefined}
         />
       );
     }
@@ -504,18 +560,19 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
     }
 
     case 'color': {
-      const hex = (
+      const colorValue = (
         metadata?.dominantColors?.[0] ??
         asString(customData?.hex) ??
-        extractHexCandidate(item.title, item.description ?? undefined, item.content ?? undefined) ??
+        asString(customData?.color) ??
+        extractColorCandidate(item.title, item.description ?? undefined, item.content ?? undefined) ??
         '#B3E5D1'
-      ).toUpperCase();
+      );
 
       return (
         <ColorPreview
-          hex={hex}
+          color={colorValue}
           name={asString(customData?.name) ?? item.title}
-          rgb={hexToRgbString(hex)}
+          isCard={isCard}
         />
       );
     }
@@ -535,8 +592,8 @@ export default function ItemPreview({ item, isCard = false }: { item: PreviewIte
       return (
         <LinkPreview
           url={sourceUrl ?? item.title}
-          title={item.title}
-          description={item.description ?? undefined}
+          title={displayTitle}
+          description={item.content ?? item.description ?? undefined}
           favicon={favicon ?? undefined}
           ogImage={imageUrl ?? undefined}
         />
